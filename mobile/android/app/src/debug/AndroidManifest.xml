@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="id.ac.unand.workshop_peserta">
+    <!-- Mengizinkan cleartext HTTP HANYA di build Debug untuk testing local server / IP LAN -->
+    <application
+        android:usesCleartextTraffic="true" />
+</manifest>
+
