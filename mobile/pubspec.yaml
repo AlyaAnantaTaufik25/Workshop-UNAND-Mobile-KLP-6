@@ -37,4 +37,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/unand-logo.png
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
 

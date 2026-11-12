@@ -1,0 +1,11 @@
+{
+  "name": "Workshop Universitas Andalas",
+  "short_name": "Workshop UNAND",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#EEF1F2",
+  "theme_color": "#14532D",
+  "description": "Pratinjau aplikasi peserta Workshop Universitas Andalas.",
+  "lang": "id",
+  "icons": [{"src": "assets/assets/images/unand-logo.png", "sizes": "860x1024", "type": "image/png", "purpose": "any"}]
+}

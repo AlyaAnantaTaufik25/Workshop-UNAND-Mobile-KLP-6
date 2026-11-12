@@ -22,7 +22,15 @@ class WorkshopPesertaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: appRouter,
+      builder: (context, child) => ColoredBox(
+        color: const Color(0xFFEEF1F2),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
-

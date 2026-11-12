@@ -1,5 +1,3 @@
-import '../../../core/constants/app_roles.dart';
-import '../../../core/network/api_exceptions.dart';
 import '../../../core/storage/session_storage.dart';
 import 'auth_api_service.dart';
 
@@ -14,13 +12,15 @@ class AuthRepository {
     // TODO: Panggil _apiService.login(email: email, password: password)
     // Simpan token hanya jika role == AppRoles.peserta
     // Jika bukan peserta, lemparkan ForbiddenRoleException
-    throw const UnimplementedError('Modul login masih dalam rencana pengembangan.');
+    throw UnimplementedError('Modul login masih dalam rencana pengembangan.');
   }
 
   /// Registrasi peserta baru
-  Future<void> register(String nama, String email, String password, String? noTelepon) async {
+  Future<void> register(
+      String nama, String email, String password, String? noTelepon) async {
     // TODO: Implementasi saat backend siap
-    throw const UnimplementedError('Modul registrasi masih dalam rencana pengembangan.');
+    throw UnimplementedError(
+        'Modul registrasi masih dalam rencana pengembangan.');
   }
 
   /// Logout dan bersihkan secure storage
@@ -39,4 +39,3 @@ class AuthRepository {
     return await _sessionStorage.isPeserta();
   }
 }
-

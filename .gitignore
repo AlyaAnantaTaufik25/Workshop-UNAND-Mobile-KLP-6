@@ -61,3 +61,11 @@ mobile/android/local.properties
 mobile/android/app/build/
 mobile/env/*.json
 !mobile/env/*.example
+
+# Generated Flutter platform configuration
+mobile/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/Flutter/ephemeral/
+mobile/ios/Runner/GeneratedPluginRegistrant.h
+mobile/ios/Runner/GeneratedPluginRegistrant.m

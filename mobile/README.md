@@ -1,5 +1,8 @@
 # 📱 Aplikasi Mobile Peserta - SIM Workshop UNAND
 
+> **Tampilan peserta:** antarmuka Flutter mengikuti referensi Figma. Lihat [panduan pratinjau](UI_PREVIEW.md) untuk halaman, cara menjalankan, dan batasan data simulasi. Status backend di bawah tetap terpisah dari ketersediaan tampilan.
+
+
 Aplikasi mobile berbasis **Flutter** ini dikembangkan untuk peserta workshop di lingkungan Universitas Andalas, baik kalangan mahasiswa UNAND maupun masyarakat umum. Melalui aplikasi ini, peserta dapat menjelajahi katalog kegiatan workshop, mendaftar ke kegiatan yang diinginkan, melakukan presensi berbasis pemindaian QR Code dinamis dan validasi radius lokasi (*geofencing*), memantau riwayat serta status kehadiran, mengunduh sertifikat resmi berformat PDF dengan tanda tangan elektronik, hingga mengajukan permohonan perbaikan data sertifikat secara mandiri. Seluruh pertukaran data terhubung langsung ke backend RESTful API yang sama dengan platform web pengelola.
 
 ---
