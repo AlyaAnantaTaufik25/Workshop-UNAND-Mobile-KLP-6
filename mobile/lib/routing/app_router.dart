@@ -36,7 +36,8 @@ final appRouter = GoRouter(
     GoRoute(
         path: '/attendance',
         builder: (_, state) => AttendanceScreen(
-            workshopId: state.uri.queryParameters['workshop'] ?? 'kuliah-ai')),
+            workshopId: state.uri.queryParameters['workshop'] ?? 'kuliah-ai',
+            dayId: state.uri.queryParameters['day'])),
     GoRoute(
         path: '/attendance/status/:id',
         builder: (_, state) =>

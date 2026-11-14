@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/demo/preview_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
+import 'online_attendance_screen.dart';
 
 const _scanResults = {
   'success': (
@@ -38,11 +39,17 @@ const _scanResults = {
     'Peserta belum terdaftar',
     'Daftar kegiatan terlebih dahulu untuk melakukan presensi.'
   ),
+  'recorded': (
+    'Presensi sudah tercatat',
+    'Kehadiran untuk hari ini sudah tersimpan.'
+  ),
 };
 
 class AttendanceScreen extends ConsumerStatefulWidget {
-  const AttendanceScreen({super.key, this.workshopId = 'kuliah-ai'});
+  const AttendanceScreen(
+      {super.key, this.workshopId = 'kuliah-ai', this.dayId});
   final String workshopId;
+  final String? dayId;
   @override
   ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
 }
@@ -62,6 +69,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               title: 'Kegiatan tidak ditemukan',
               message: 'Buka presensi melalui halaman Kegiatan Saya.'));
     }
+    if (widget.dayId == null && w.days.length > 1) {
+      return AttendanceStatusScreen(workshopId: w.id);
+    }
+    final matches =
+        w.days.where((day) => day.id == (widget.dayId ?? w.days.first.id));
+    if (matches.isEmpty) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('Presensi Kegiatan')),
+          body: const AppEmptyState(
+              icon: Icons.event_busy_outlined,
+              title: 'Jadwal tidak ditemukan',
+              message: 'Pilih hari melalui daftar presensi harian.'));
+    }
+    final day = matches.first;
+    if (w.delivery == WorkshopDelivery.online) {
+      return OnlineAttendanceScreen(
+          key: ValueKey('${w.id}/${day.id}'), workshop: w, day: day);
+    }
+    final registration = ref.watch(previewProvider).registrationFor(w.id);
+    final alreadyRecorded =
+        registration?.attendanceFor(day).status == AttendanceStatus.present;
     if (_result != null) {
       final success = _result == 'success';
       final (title, message) = _scanResults[_result]!;
@@ -105,8 +133,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       const SizedBox(height: 15),
                       DetailRow(
                           icon: Icons.calendar_month_outlined,
-                          label: 'Tanggal Kegiatan',
-                          value: w.shortDate),
+                          label: 'Hari ke-${w.days.indexOf(day) + 1}',
+                          value: day.date),
                       const SizedBox(height: 13),
                       DetailRow(
                           icon: Icons.location_on_outlined,
@@ -114,6 +142,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           value: w.location)
                     ])),
                 const SizedBox(height: 20),
+                AppButton('Lihat Presensi Harian',
+                    secondary: true,
+                    onPressed: () =>
+                        context.push('/attendance/status/${w.id}')),
+                const SizedBox(height: 10),
                 if (!success) ...[
                   AppButton('Coba Lagi',
                       onPressed: () => setState(() => _result = null)),
@@ -138,7 +171,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         body: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 30),
             child: Column(children: [
-              const StatusBadge('Presensi aktif'),
+              StatusBadge(alreadyRecorded
+                  ? 'Sudah Hadir'
+                  : day.window == AttendanceWindow.open
+                      ? 'Presensi aktif'
+                      : day.window == AttendanceWindow.notOpen
+                          ? 'Belum Dibuka'
+                          : 'Presensi Ditutup'),
               const SizedBox(height: 10),
               Text(w.title,
                   textAlign: TextAlign.center,
@@ -148,7 +187,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       color: Colors.white,
                       height: 1.4)),
               const SizedBox(height: 7),
-              Text(w.time,
+              Text(
+                  'Hari ke-${w.days.indexOf(day) + 1} • ${day.date}\n${day.time}',
+                  textAlign: TextAlign.center,
                   style:
                       const TextStyle(fontSize: 10, color: Color(0xFFA7C5B2))),
               const SizedBox(height: 20),
@@ -232,7 +273,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               const SizedBox(height: 17),
               AppButton(_scanning ? 'Sedang Memindai...' : 'Mulai Pindai',
                   icon: Icons.qr_code_scanner,
-                  onPressed: _scanning ? null : _scan),
+                  onPressed: _scanning ||
+                          alreadyRecorded ||
+                          registration == null ||
+                          day.window != AttendanceWindow.open
+                      ? null
+                      : _scan),
             ])));
   }
 
@@ -245,10 +291,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       final state = ref.read(previewProvider);
       if (state.registrationFor(widget.workshopId) == null) {
         result = 'unregistered';
-      } else if (findWorkshop(widget.workshopId)?.attendanceOpen != true) {
-        result = 'closed';
       } else {
-        ref.read(previewProvider.notifier).checkIn(widget.workshopId);
+        final w = findWorkshop(widget.workshopId)!;
+        final day = w.days
+            .firstWhere((day) => day.id == (widget.dayId ?? w.days.first.id));
+        if (day.window == AttendanceWindow.notOpen) {
+          result = 'not-open';
+        } else if (day.window == AttendanceWindow.closed) {
+          result = 'closed';
+        } else if (!ref
+            .read(previewProvider.notifier)
+            .checkIn(widget.workshopId, dayId: day.id)) {
+          result = 'recorded';
+        }
       }
     }
     setState(() {
@@ -286,6 +341,7 @@ class AttendanceStatusScreen extends ConsumerWidget {
                 style: TextStyle(fontSize: 10, color: AppColors.muted)),
             const SizedBox(height: 4),
             Text(r?.attendanceLabel ?? 'Belum Terdaftar',
+                textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
@@ -309,11 +365,100 @@ class AttendanceStatusScreen extends ConsumerWidget {
                       label: 'Tanggal',
                       value: w.date),
                   const SizedBox(height: 14),
-                  DetailRow(
-                      icon: Icons.location_on_outlined,
-                      label: 'Lokasi',
-                      value: w.location)
+                  if (w.delivery == WorkshopDelivery.online)
+                    const InfoNote(Workshop.onlineLinkNotice,
+                        icon: Icons.link_outlined)
+                  else
+                    DetailRow(
+                        icon: Icons.location_on_outlined,
+                        label: 'Lokasi',
+                        value: w.location),
                 ])),
+          if (w != null) ...[
+            const SizedBox(height: 22),
+            SectionHeading('Presensi Harian', caption: '${w.days.length} hari'),
+            InfoNote(w.delivery == WorkshopDelivery.online
+                ? 'Unggah screenshot keikutsertaan untuk setiap hari. Bukti diperiksa panitia secara terpisah.'
+                : 'Pindai QR di lokasi pada setiap hari kegiatan yang Anda ikuti.'),
+            const SizedBox(height: 14),
+            for (var index = 0; index < w.days.length; index++) ...[
+              _dayCard(context, w, r, w.days[index], index + 1),
+              const SizedBox(height: 12),
+            ],
+          ],
+        ]));
+  }
+
+  Widget _dayCard(BuildContext context, Workshop w, PreviewRegistration? r,
+      WorkshopDay day, int number) {
+    final record = r?.attendanceFor(day);
+    final status = record?.status ?? AttendanceStatus.pending;
+    final canCheckIn = r != null &&
+        status == AttendanceStatus.pending &&
+        day.window == AttendanceWindow.open;
+    final label = r == null
+        ? 'Belum Terdaftar'
+        : status == AttendanceStatus.pending &&
+                day.window == AttendanceWindow.notOpen
+            ? 'Belum Dibuka'
+            : status.label;
+    return SurfaceCard(
+        key: ValueKey('attendance-${day.id}'),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('Hari ke-$number',
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                StatusBadge(label,
+                    tone: status == AttendanceStatus.present
+                        ? BadgeTone.green
+                        : status == AttendanceStatus.absent
+                            ? BadgeTone.red
+                            : BadgeTone.amber),
+              ]),
+          const SizedBox(height: 10),
+          Text(day.date,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 5),
+          Text(day.time,
+              style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          if (day.window == AttendanceWindow.closed) ...[
+            const SizedBox(height: 8),
+            const Text('Sesi presensi ditutup',
+                style: TextStyle(fontSize: 10, color: AppColors.muted)),
+          ],
+          if (record?.evidence != null) ...[
+            const SizedBox(height: 12),
+            Image.memory(record!.evidence!.bytes,
+                height: 120,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                cacheWidth: 800,
+                semanticLabel: 'Bukti kehadiran hari ke-$number'),
+            const SizedBox(height: 6),
+            Text(record.evidence!.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          ],
+          if (canCheckIn) ...[
+            const SizedBox(height: 14),
+            AppButton(
+                w.delivery == WorkshopDelivery.online
+                    ? 'Unggah Screenshot'
+                    : 'Pindai QR',
+                compact: true,
+                icon: w.delivery == WorkshopDelivery.online
+                    ? Icons.upload_file_outlined
+                    : Icons.qr_code_scanner,
+                onPressed: () =>
+                    context.push('/attendance?workshop=${w.id}&day=${day.id}')),
+          ],
         ]));
   }
 }

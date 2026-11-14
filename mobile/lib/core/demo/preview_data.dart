@@ -1,10 +1,45 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum WorkshopPhase { upcoming, ongoing, finished }
 
 enum WorkshopStatus { open, full, closed }
 
-enum AttendanceStatus { pending, present, absent }
+enum AttendanceStatus {
+  pending('Belum Presensi'),
+  submitted('Menunggu Verifikasi'),
+  present('Hadir'),
+  absent('Tidak Hadir');
+
+  const AttendanceStatus(this.label);
+  final String label;
+}
+
+enum AttendanceWindow { notOpen, open, closed }
+
+class WorkshopDay {
+  const WorkshopDay(
+      {required this.id,
+      required this.date,
+      required this.time,
+      this.window = AttendanceWindow.notOpen});
+  final String id, date, time;
+  final AttendanceWindow window;
+}
+
+class ScreenshotEvidence {
+  ScreenshotEvidence({required this.name, required Uint8List bytes})
+      : bytes = bytes.asUnmodifiableView();
+  final String name;
+  final Uint8List bytes;
+}
+
+class DayAttendance {
+  const DayAttendance(this.status, {this.evidence});
+  final AttendanceStatus status;
+  final ScreenshotEvidence? evidence;
+}
 
 enum WorkshopDelivery {
   online('Online'),
@@ -37,7 +72,7 @@ class Workshop {
       this.remaining,
       this.status = WorkshopStatus.open,
       this.phase = WorkshopPhase.upcoming,
-      this.attendanceOpen = false});
+      required this.days});
   final String id,
       kind,
       title,
@@ -58,7 +93,11 @@ class Workshop {
   final WorkshopStatus status;
   final WorkshopPhase phase;
   final WorkshopDelivery delivery;
-  final bool attendanceOpen;
+  final List<WorkshopDay> days;
+  bool get attendanceOpen =>
+      days.any((day) => day.window == AttendanceWindow.open);
+  static const onlineLinkNotice =
+      'Tautan kegiatan akan dibagikan H-1 melalui Kegiatan Saya.';
 }
 
 const previewWorkshops = [
@@ -72,8 +111,8 @@ const previewWorkshops = [
           'Pelatihan intensif untuk mengenal alur kerja data science, pemanfaatan kecerdasan artifisial, dan penerapannya dalam berbagai bidang.',
       speaker: 'Dr. Rina Kurniawati, M.Kom.',
       organizer: 'UPT Teknologi Informasi UNAND',
-      date: 'Sabtu, 28 Juni 2025',
-      shortDate: '28 Jun 2025',
+      date: 'Sabtu–Minggu, 28–29 Juni 2025',
+      shortDate: '28–29 Jun 2025',
       time: '08.30–15.30 WIB',
       location: 'Gedung Convention Hall',
       room: 'Ruang Seminar Lantai 2',
@@ -86,7 +125,13 @@ const previewWorkshops = [
       registrationPeriod: '10–25 Juni 2025',
       capacity: 120,
       remaining: 34,
-      image: 'assets/images/data-science.jpg'),
+      image: 'assets/images/data-science.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1', date: 'Sabtu, 28 Juni 2025', time: '08.30–15.30 WIB'),
+        WorkshopDay(
+            id: 'day-2', date: 'Minggu, 29 Juni 2025', time: '08.30–15.30 WIB'),
+      ]),
   Workshop(
       id: 'seminar-ti',
       kind: 'Seminar',
@@ -105,7 +150,11 @@ const previewWorkshops = [
       target: 'Mahasiswa, dosen, dan peserta umum',
       benefits: ['Sertifikat elektronik', 'Sesi diskusi', 'Wawasan industri'],
       registrationPeriod: '12 Juni–1 Juli 2025',
-      image: 'assets/images/seminar.jpg'),
+      image: 'assets/images/seminar.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1', date: 'Kamis, 3 Juli 2025', time: '09.00–12.30 WIB'),
+      ]),
   Workshop(
       id: 'kuliah-ai',
       kind: 'Kuliah Umum',
@@ -127,8 +176,14 @@ const previewWorkshops = [
       capacity: 500,
       remaining: 112,
       phase: WorkshopPhase.ongoing,
-      attendanceOpen: true,
-      image: 'assets/images/kuliah-ai.jpg'),
+      image: 'assets/images/kuliah-ai.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1',
+            date: 'Rabu, 18 Juni 2025',
+            time: '10.00–12.00 WIB',
+            window: AttendanceWindow.open),
+      ]),
   Workshop(
       id: 'karya-ilmiah',
       kind: 'Workshop',
@@ -151,7 +206,14 @@ const previewWorkshops = [
       remaining: 0,
       status: WorkshopStatus.closed,
       phase: WorkshopPhase.finished,
-      image: 'assets/images/karya-ilmiah.jpg'),
+      image: 'assets/images/karya-ilmiah.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1',
+            date: 'Senin, 12 Mei 2025',
+            time: '08.00–14.00 WIB',
+            window: AttendanceWindow.closed),
+      ]),
   Workshop(
       id: 'kewirausahaan',
       kind: 'Seminar',
@@ -174,7 +236,14 @@ const previewWorkshops = [
       remaining: 0,
       status: WorkshopStatus.closed,
       phase: WorkshopPhase.finished,
-      image: 'assets/images/seminar.jpg'),
+      image: 'assets/images/seminar.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1',
+            date: 'Jumat, 25 April 2025',
+            time: '13.30–16.00 WIB',
+            window: AttendanceWindow.closed),
+      ]),
   Workshop(
       id: 'public-speaking',
       kind: 'Workshop',
@@ -195,7 +264,46 @@ const previewWorkshops = [
       capacity: 60,
       remaining: 0,
       status: WorkshopStatus.full,
-      image: 'assets/images/kuliah-ai.jpg'),
+      image: 'assets/images/kuliah-ai.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1', date: 'Sabtu, 5 Juli 2025', time: '09.00–15.00 WIB'),
+      ]),
+  Workshop(
+      id: 'digital-bootcamp',
+      kind: 'Workshop',
+      delivery: WorkshopDelivery.online,
+      title: 'Bootcamp Keterampilan Digital',
+      theme: 'Belajar dan Berkarya Bersama secara Daring',
+      description:
+          'Pelatihan tiga hari tentang kolaborasi digital, pengolahan data, dan presentasi hasil proyek. Isi presensi untuk setiap hari yang Anda ikuti.',
+      speaker: 'Tim Instruktur Digital UNAND',
+      organizer: 'UPT Teknologi Informasi UNAND',
+      date: 'Selasa–Kamis, 17–19 Juni 2025',
+      shortDate: '17–19 Jun 2025',
+      time: '09.00–12.00 WIB setiap hari',
+      location: 'Zoom Meeting',
+      room: '',
+      target: 'Mahasiswa UNAND dan peserta umum',
+      benefits: ['Sertifikat elektronik', 'Praktik proyek', 'Materi digital'],
+      registrationPeriod: '1–15 Juni 2025',
+      status: WorkshopStatus.closed,
+      phase: WorkshopPhase.ongoing,
+      image: 'assets/images/data-science.jpg',
+      days: [
+        WorkshopDay(
+            id: 'day-1',
+            date: 'Selasa, 17 Juni 2025',
+            time: '09.00–12.00 WIB',
+            window: AttendanceWindow.open),
+        WorkshopDay(
+            id: 'day-2',
+            date: 'Rabu, 18 Juni 2025',
+            time: '09.00–12.00 WIB',
+            window: AttendanceWindow.open),
+        WorkshopDay(
+            id: 'day-3', date: 'Kamis, 19 Juni 2025', time: '09.00–12.00 WIB'),
+      ]),
 ];
 
 Workshop? findWorkshop(String id) {
@@ -223,15 +331,49 @@ class ParticipantProfile {
 }
 
 class PreviewRegistration {
-  const PreviewRegistration(this.workshopId,
-      {this.attendance = AttendanceStatus.pending});
+  const PreviewRegistration(this.workshopId, {this.dailyAttendance = const {}});
   final String workshopId;
-  final AttendanceStatus attendance;
-  String get attendanceLabel => switch (attendance) {
-        AttendanceStatus.pending => 'Belum Presensi',
-        AttendanceStatus.present => 'Hadir',
-        AttendanceStatus.absent => 'Tidak Hadir'
-      };
+  final Map<String, DayAttendance> dailyAttendance;
+
+  DayAttendance attendanceFor(WorkshopDay day) =>
+      dailyAttendance[day.id] ??
+      DayAttendance(day.window == AttendanceWindow.closed
+          ? AttendanceStatus.absent
+          : AttendanceStatus.pending);
+
+  AttendanceStatus get attendance {
+    final statuses = findWorkshop(workshopId)!
+        .days
+        .map((day) => attendanceFor(day).status)
+        .toList();
+    if (statuses.every((s) => s == AttendanceStatus.present)) {
+      return AttendanceStatus.present;
+    }
+    if (statuses.contains(AttendanceStatus.pending)) {
+      return AttendanceStatus.pending;
+    }
+    if (statuses.contains(AttendanceStatus.submitted)) {
+      return AttendanceStatus.submitted;
+    }
+    return AttendanceStatus.absent;
+  }
+
+  int get recordedDays => dailyAttendance.values
+      .where((a) =>
+          a.status == AttendanceStatus.present ||
+          a.status == AttendanceStatus.submitted)
+      .length;
+
+  String get attendanceLabel {
+    final days = findWorkshop(workshopId)!.days;
+    return days.length > 1
+        ? '$recordedDays/${days.length} hari tercatat'
+        : attendance.label;
+  }
+
+  bool get canCheckIn => findWorkshop(workshopId)!.days.any((day) =>
+      day.window == AttendanceWindow.open &&
+      attendanceFor(day).status == AttendanceStatus.pending);
 }
 
 class PreviewNotification {
@@ -260,10 +402,11 @@ class PreviewState {
       {this.profile,
       this.registrations = const [
         PreviewRegistration('kuliah-ai'),
-        PreviewRegistration('karya-ilmiah',
-            attendance: AttendanceStatus.present),
-        PreviewRegistration('kewirausahaan',
-            attendance: AttendanceStatus.absent)
+        PreviewRegistration('digital-bootcamp'),
+        PreviewRegistration('karya-ilmiah', dailyAttendance: {
+          'day-1': DayAttendance(AttendanceStatus.present)
+        }),
+        PreviewRegistration('kewirausahaan')
       ],
       this.notifications = const [
         PreviewNotification(
@@ -334,15 +477,32 @@ class PreviewNotifier extends StateNotifier<PreviewState> {
         registrations: [...state.registrations, PreviewRegistration(id)]);
   }
 
-  bool checkIn(String id) {
-    if (findWorkshop(id)?.attendanceOpen != true ||
-        state.registrationFor(id) == null) {
+  bool checkIn(String id, {String? dayId, ScreenshotEvidence? evidence}) {
+    final workshop = findWorkshop(id);
+    final registration = state.registrationFor(id);
+    if (workshop == null || registration == null) return false;
+    final matches = workshop.days.where((day) =>
+        day.id ==
+        (dayId ?? (workshop.days.length == 1 ? workshop.days.first.id : null)));
+    if (matches.isEmpty) return false;
+    final day = matches.first;
+    if (day.window != AttendanceWindow.open ||
+        registration.attendanceFor(day).status != AttendanceStatus.pending ||
+        (workshop.delivery == WorkshopDelivery.online && evidence == null)) {
       return false;
     }
+    final record = DayAttendance(
+        workshop.delivery == WorkshopDelivery.online
+            ? AttendanceStatus.submitted
+            : AttendanceStatus.present,
+        evidence:
+            workshop.delivery == WorkshopDelivery.online ? evidence : null);
     state = state.copyWith(
         registrations: state.registrations
             .map((r) => r.workshopId == id
-                ? PreviewRegistration(id, attendance: AttendanceStatus.present)
+                ? PreviewRegistration(id,
+                    dailyAttendance: Map.unmodifiable(
+                        {...r.dailyAttendance, day.id: record}))
                 : r)
             .toList());
     return true;

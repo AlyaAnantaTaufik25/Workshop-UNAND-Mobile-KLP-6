@@ -28,6 +28,9 @@ dependencies:
   # Secure Storage
   flutter_secure_storage: ^9.2.2
 
+  # Screenshot evidence for online attendance (web and mobile)
+  file_selector: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

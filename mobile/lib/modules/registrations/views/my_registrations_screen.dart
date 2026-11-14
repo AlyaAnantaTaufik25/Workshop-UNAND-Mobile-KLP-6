@@ -87,8 +87,8 @@ class MyRegistrationsScreen extends ConsumerWidget {
                                     if (w.delivery ==
                                         WorkshopDelivery.online) ...[
                                       const SizedBox(height: 4),
-                                      Text(w.location,
-                                          style: const TextStyle(
+                                      const Text('Tautan tersedia H-1',
+                                          style: TextStyle(
                                               fontSize: 9,
                                               color: AppColors.muted)),
                                     ],
@@ -113,7 +113,10 @@ class MyRegistrationsScreen extends ConsumerWidget {
                                   style: TextStyle(
                                       fontSize: 9, color: AppColors.muted)),
                               StatusBadge(r.attendanceLabel,
-                                  tone: r.attendance == AttendanceStatus.pending
+                                  tone: r.attendance ==
+                                              AttendanceStatus.pending ||
+                                          r.attendance ==
+                                              AttendanceStatus.submitted
                                       ? BadgeTone.amber
                                       : r.attendance == AttendanceStatus.absent
                                           ? BadgeTone.red
@@ -129,23 +132,26 @@ class MyRegistrationsScreen extends ConsumerWidget {
                                   compact: true,
                                   onPressed: () =>
                                       context.push('/workshops/${w.id}'))),
-                          if (w.attendanceOpen &&
-                              r.attendance == AttendanceStatus.pending) ...[
+                          if (r.canCheckIn) ...[
                             const SizedBox(width: 8),
                             Expanded(
                                 child: AppButton('Presensi Sekarang',
                                     compact: true,
-                                    icon: Icons.qr_code_scanner,
+                                    icon: w.delivery == WorkshopDelivery.online
+                                        ? Icons.upload_file_outlined
+                                        : Icons.qr_code_scanner,
                                     onPressed: () => context
                                         .push('/attendance?workshop=${w.id}')))
                           ]
                         ]),
-                        if (r.attendance != AttendanceStatus.pending)
-                          TextButton(
-                              onPressed: () =>
-                                  context.push('/attendance/status/${w.id}'),
-                              child: const Text('Lihat Status Kehadiran',
-                                  style: TextStyle(fontSize: 10))),
+                        TextButton(
+                            onPressed: () =>
+                                context.push('/attendance/status/${w.id}'),
+                            child: Text(
+                                w.days.length > 1
+                                    ? 'Lihat Presensi Harian'
+                                    : 'Lihat Status Kehadiran',
+                                style: const TextStyle(fontSize: 10))),
                       ]));
                 });
           }).toList()),

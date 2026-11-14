@@ -88,7 +88,12 @@ class WorkshopCard extends StatelessWidget {
               _meta(Icons.calendar_month_outlined, workshop.shortDate),
               if (workshop.delivery == WorkshopDelivery.online) ...[
                 const SizedBox(height: 6),
-                _meta(Icons.videocam_outlined, workshop.location),
+                _meta(Icons.link_outlined, 'Tautan tersedia H-1'),
+              ],
+              if (workshop.days.length > 1) ...[
+                const SizedBox(height: 6),
+                _meta(Icons.event_repeat_outlined,
+                    '${workshop.days.length} hari • Presensi setiap hari'),
               ],
               if (!compact) ...[
                 const SizedBox(height: 9),

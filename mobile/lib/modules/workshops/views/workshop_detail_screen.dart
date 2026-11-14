@@ -97,21 +97,44 @@ class WorkshopDetailScreen extends ConsumerWidget {
                         label: 'Waktu',
                         value: w.time),
                     const SizedBox(height: 17),
-                    DetailRow(
-                        icon: w.delivery == WorkshopDelivery.online
-                            ? Icons.videocam_outlined
-                            : Icons.location_on_outlined,
-                        label: w.delivery == WorkshopDelivery.online
-                            ? 'Platform'
-                            : 'Lokasi',
-                        value: w.location,
-                        detail: w.room),
+                    if (w.delivery == WorkshopDelivery.online)
+                      const InfoNote(Workshop.onlineLinkNotice,
+                          icon: Icons.link_outlined)
+                    else
+                      DetailRow(
+                          icon: Icons.location_on_outlined,
+                          label: 'Lokasi',
+                          value: w.location,
+                          detail: w.room),
                     const SizedBox(height: 17),
                     DetailRow(
                         icon: Icons.groups_outlined,
                         label: 'Target Peserta',
                         value: w.target),
                   ])),
+              _section(
+                  'Jadwal & Presensi Harian',
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        InfoNote(w.delivery == WorkshopDelivery.online
+                            ? 'Presensi dilakukan dengan mengunggah screenshot pada setiap hari kegiatan.'
+                            : 'Presensi dilakukan dengan memindai QR di lokasi pada setiap hari kegiatan.'),
+                        const SizedBox(height: 14),
+                        for (var index = 0; index < w.days.length; index++) ...[
+                          DetailRow(
+                              icon: Icons.event_outlined,
+                              label: 'Hari ke-${index + 1}',
+                              value: w.days[index].date,
+                              detail: w.days[index].time),
+                          const SizedBox(height: 14),
+                        ],
+                        if (registered)
+                          AppButton('Lihat Presensi Harian',
+                              secondary: true,
+                              onPressed: () =>
+                                  context.push('/attendance/status/${w.id}')),
+                      ])),
               _section(
                   'Tentang Kegiatan',
                   Column(
