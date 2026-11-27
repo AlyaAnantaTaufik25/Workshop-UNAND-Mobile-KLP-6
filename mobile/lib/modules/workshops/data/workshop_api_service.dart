@@ -1,27 +1,42 @@
 import 'package:dio/dio.dart';
 import '../../../core/constants/api_endpoints.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/data/participant_models.dart';
+import '../../../core/network/api_call.dart';
 
-/// Service API Katalog Kegiatan Workshop [PLANNED]
+/// Kegiatan beserta pendaftaran peserta yang sedang login (bila ada)
+class WorkshopWithRegistration {
+  const WorkshopWithRegistration(this.workshop, this.registration);
+  final Workshop workshop;
+  final Registration? registration;
+
+  factory WorkshopWithRegistration.fromJson(dynamic data) {
+    final json = jsonMap(data);
+    final workshop = Workshop.fromJson(json);
+    final mine = json['myRegistration'];
+    return WorkshopWithRegistration(
+        workshop, mine is Map ? Registration.fromJson(jsonMap(mine), workshop) : null);
+  }
+}
+
+/// Service API Katalog Kegiatan Workshop
 class WorkshopApiService {
   final Dio _dio;
 
   WorkshopApiService(this._dio);
 
-  /// Mengambil daftar workshop publik dengan pagination & filter
-  // TODO: Hubungkan ke GET /api/v1/workshops saat endpoint selesai dikembangkan
-  Future<ApiResponse<List<dynamic>>> getWorkshops({
-    int page = 1,
-    int limit = 10,
-    String? search,
-  }) async {
-    throw UnimplementedError('Endpoint GET ${ApiEndpoints.workshops} masih dalam rencana pengembangan backend.');
-  }
+  /// GET /workshops — kegiatan publik (+ `myRegistration` untuk peserta)
+  Future<List<WorkshopWithRegistration>> getWorkshops({String? search}) =>
+      apiCall(
+        () => _dio.get(ApiEndpoints.workshops,
+            queryParameters: {
+              if (search != null && search.isNotEmpty) 'search': search
+            }),
+        (data) =>
+            jsonList(data).map(WorkshopWithRegistration.fromJson).toList(),
+      );
 
-  /// Mengambil detail satu workshop
-  // TODO: Hubungkan ke GET /api/v1/workshops/:id
-  Future<ApiResponse<dynamic>> getWorkshopDetail(String id) async {
-    throw UnimplementedError('Endpoint GET ${ApiEndpoints.workshopDetail(id)} masih dalam rencana pengembangan backend.');
-  }
+  /// GET /workshops/:idOrSlug
+  Future<WorkshopWithRegistration> getWorkshopDetail(String idOrSlug) =>
+      apiCall(() => _dio.get(ApiEndpoints.workshopDetail(idOrSlug)),
+          WorkshopWithRegistration.fromJson);
 }
-

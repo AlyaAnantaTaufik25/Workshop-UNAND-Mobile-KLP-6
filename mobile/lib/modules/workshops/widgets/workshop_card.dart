@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 
@@ -10,12 +10,12 @@ class WorkshopVenueBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final online = workshop.delivery == WorkshopDelivery.online;
-    final color = online ? const Color(0xFF1D4ED8) : AppColors.primary;
+    final color = online ? AppColors.blue : AppColors.statusGreen;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: online ? const Color(0xFFEFF6FF) : AppColors.paleGreen,
-        borderRadius: BorderRadius.circular(30),
+        color: online ? AppColors.blueBg : AppColors.paleGreen,
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(online ? Icons.videocam_outlined : Icons.location_on_outlined,
@@ -38,17 +38,36 @@ class WorkshopImage extends StatelessWidget {
   const WorkshopImage(this.workshop, {super.key, this.height, this.width});
   final Workshop workshop;
   final double? height, width;
-  @override
-  Widget build(BuildContext context) => Image.asset(workshop.image,
+
+  Widget _placeholder() => Container(
       width: width,
       height: height,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
+      color: AppColors.paleGreen,
+      child: const Icon(Icons.account_balance_outlined,
+          color: AppColors.green, size: 36));
+
+  @override
+  Widget build(BuildContext context) {
+    final src = workshop.image;
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return Image.network(src,
           width: width,
           height: height,
-          color: AppColors.paleGreen,
-          child: const Icon(Icons.account_balance_outlined,
-              color: AppColors.green, size: 36)));
+          fit: BoxFit.cover,
+          cacheWidth: 900,
+          loadingBuilder: (_, child, progress) =>
+              progress == null ? child : _placeholder(),
+          errorBuilder: (_, __, ___) => _placeholder());
+    }
+    if (src.startsWith('assets/')) {
+      return Image.asset(src,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
+    }
+    return _placeholder();
+  }
 }
 
 class WorkshopCard extends StatelessWidget {
@@ -69,26 +88,36 @@ class WorkshopCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              ThemeTag(workshop.kind),
+              const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 5, children: [
-                StatusBadge(workshop.kind),
                 WorkshopVenueBadge(workshop),
                 if (registered)
-                  const StatusBadge('Terdaftar', tone: BadgeTone.gray)
+                  const StatusBadge('Terdaftar')
+                else if (workshop.status != WorkshopStatus.open)
+                  StatusBadge(workshop.registrationLabel,
+                      tone: workshop.status == WorkshopStatus.waitlist
+                          ? BadgeTone.amber
+                          : BadgeTone.gray),
               ]),
               const SizedBox(height: 9),
               Text(workshop.title,
                   maxLines: compact ? 2 : null,
                   overflow: compact ? TextOverflow.ellipsis : null,
                   style: TextStyle(
-                      fontSize: compact ? 13 : 15,
+                      fontSize: compact ? 14 : 15,
+                      color: AppColors.heading,
                       fontWeight: FontWeight.w700,
                       height: 1.4,
                       letterSpacing: -.2)),
               const SizedBox(height: 11),
               _meta(Icons.calendar_month_outlined, workshop.shortDate),
+              const SizedBox(height: 6),
+              _meta(Icons.schedule_outlined, workshop.time),
               if (workshop.delivery == WorkshopDelivery.online) ...[
                 const SizedBox(height: 6),
-                _meta(Icons.link_outlined, 'Tautan tersedia H-1'),
+                _meta(Icons.link_outlined, 'Tautan tersedia H-1',
+                    color: AppColors.info),
               ],
               if (workshop.days.length > 1) ...[
                 const SizedBox(height: 6),
@@ -99,40 +128,37 @@ class WorkshopCard extends StatelessWidget {
                 const SizedBox(height: 9),
                 Text(workshop.organizer,
                     style:
-                        const TextStyle(fontSize: 10, color: AppColors.muted)),
+                        const TextStyle(fontSize: 11, color: AppColors.muted)),
                 if (workshop.capacity != null &&
+                    workshop.capacity! > 0 &&
                     workshop.status == WorkshopStatus.open) ...[
                   const SizedBox(height: 12),
                   Text('${workshop.remaining} kursi tersisa',
                       style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: AppColors.muted,
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 5),
                   ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
-                          value: (workshop.remaining ?? 0) / workshop.capacity!,
+                          value: ((workshop.remaining ?? 0) /
+                                  workshop.capacity!)
+                              .clamp(0.0, 1.0),
                           minHeight: 4,
                           backgroundColor: AppColors.border,
                           color: AppColors.green)),
                 ],
               ],
               const SizedBox(height: 14),
-              AppButton('Lihat Detail',
-                  onPressed: onOpen, secondary: true, compact: true),
+              AppButton('Lihat Detail', onPressed: onOpen, compact: true),
             ]));
     return Container(
         decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: const Color(0xFFE8EBEE)),
-            borderRadius: BorderRadius.circular(13),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x0A0F172A),
-                  offset: Offset(0, 4),
-                  blurRadius: 14)
-            ]),
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+            boxShadow: AppTheme.cardShadow),
         clipBehavior: Clip.antiAlias,
         child: compact
             ? IntrinsicHeight(
@@ -144,15 +170,16 @@ class WorkshopCard extends StatelessWidget {
                   ]))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [WorkshopImage(workshop, height: 150), content]));
+                children: [WorkshopImage(workshop, height: 154), content]));
   }
 
-  Widget _meta(IconData icon, String text) =>
+  Widget _meta(IconData icon, String text, {Color? color}) =>
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 15, color: AppColors.green),
-        const SizedBox(width: 6),
+        Icon(icon, size: 15, color: color ?? AppColors.green),
+        const SizedBox(width: 8),
         Expanded(
             child: Text(text,
-                style: const TextStyle(fontSize: 10, color: AppColors.muted)))
+                style: TextStyle(
+                    fontSize: 11, height: 1.45, color: color ?? AppColors.muted)))
       ]);
 }

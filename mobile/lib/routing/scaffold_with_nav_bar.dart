@@ -42,10 +42,10 @@ class ScaffoldWithNavBar extends StatelessWidget {
             label: label,
             excludeSemantics: true,
             child: Material(
-                color: selected ? AppColors.paleGreen : Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                color: selected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(AppTheme.radius),
                 child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppTheme.radius),
                     onTap: () => navigationShell.goBranch(index,
                         initialLocation: index == navigationShell.currentIndex),
                     child: Padding(
@@ -55,16 +55,16 @@ class ScaffoldWithNavBar extends StatelessWidget {
                           Icon(icon,
                               size: 21,
                               color: selected
-                                  ? AppColors.primary
-                                  : const Color(0xFF94A3B8)),
+                                  ? Colors.white
+                                  : const Color(0xFF52605A)),
                           const SizedBox(height: 4),
                           Text(label,
                               style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: selected
-                                      ? AppColors.primary
-                                      : const Color(0xFF94A3B8))),
+                                      ? Colors.white
+                                      : const Color(0xFF52605A))),
                         ]))))));
   }
 }

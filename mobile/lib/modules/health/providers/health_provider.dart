@@ -1,20 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_response.dart';
-import '../../../core/network/dio_client.dart';
-import '../../../core/storage/session_storage.dart';
+import '../../../core/network/network_providers.dart';
 import '../data/health_api_service.dart';
 import '../data/health_repository.dart';
 import '../models/health_model.dart';
 
-// Provider dasar
-final sessionStorageProvider = Provider<SessionStorage>((ref) {
-  return SessionStorage();
-});
-
-final dioClientProvider = Provider<DioClient>((ref) {
-  final storage = ref.watch(sessionStorageProvider);
-  return DioClient(sessionStorage: storage);
-});
+export '../../../core/network/network_providers.dart'
+    show sessionStorageProvider, dioClientProvider;
 
 final healthApiServiceProvider = Provider<HealthApiService>((ref) {
   final dioClient = ref.watch(dioClientProvider);
@@ -27,7 +19,8 @@ final healthRepositoryProvider = Provider<HealthRepository>((ref) {
 });
 
 // StateNotifier untuk mengontrol aksi pemeriksaan kesehatan
-class HealthStateNotifier extends StateNotifier<AsyncValue<ApiResponse<HealthData>?>> {
+class HealthStateNotifier
+    extends StateNotifier<AsyncValue<ApiResponse<HealthData>?>> {
   final HealthRepository _repository;
 
   HealthStateNotifier(this._repository) : super(const AsyncValue.data(null));
@@ -43,9 +36,8 @@ class HealthStateNotifier extends StateNotifier<AsyncValue<ApiResponse<HealthDat
   }
 }
 
-final healthStateNotifierProvider =
-    StateNotifierProvider<HealthStateNotifier, AsyncValue<ApiResponse<HealthData>?>>((ref) {
+final healthStateNotifierProvider = StateNotifierProvider<HealthStateNotifier,
+    AsyncValue<ApiResponse<HealthData>?>>((ref) {
   final repository = ref.watch(healthRepositoryProvider);
   return HealthStateNotifier(repository);
 });
-

@@ -3,9 +3,10 @@ import 'dart:ui' as ui;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_models.dart';
 
-const maxScreenshotBytes = 5 * 1024 * 1024;
+/// Sama dengan batas backend (attendance.service.js: MAX_UPLOAD 2 MB)
+const maxScreenshotBytes = 2 * 1024 * 1024;
 
 final screenshotPickerProvider =
     Provider<Future<ScreenshotEvidence?> Function()>((ref) {
@@ -27,11 +28,11 @@ Future<ScreenshotEvidence> readScreenshot(XFile file) async {
     throw const FormatException('Pilih screenshot berformat PNG atau JPG.');
   }
   if (await file.length() > maxScreenshotBytes) {
-    throw const FormatException('Ukuran screenshot maksimal 5 MB.');
+    throw const FormatException('Ukuran screenshot maksimal 2 MB.');
   }
   final bytes = await file.readAsBytes();
   if (bytes.isEmpty || bytes.length > maxScreenshotBytes) {
-    throw const FormatException('Screenshot kosong atau melebihi 5 MB.');
+    throw const FormatException('Screenshot kosong atau melebihi 2 MB.');
   }
   final png = bytes.length >= 8 &&
       bytes[0] == 0x89 &&

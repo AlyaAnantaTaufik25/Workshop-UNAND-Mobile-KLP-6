@@ -1,36 +1,47 @@
-/// Daftar endpoint REST API (mengacu pada docs/api-contract.md)
+/// Daftar endpoint REST API backend SIM Workshop UNAND.
+///
+/// Backend yang dipakai adalah backend yang SAMA dengan aplikasi web
+/// (repositori WorkshopFTIPPSI/backend), sehingga data web dan mobile selalu
+/// sinkron. Path relatif terhadap [Env.apiBaseUrl] (`.../api/v1`).
 class ApiEndpoints {
   ApiEndpoints._();
 
-  // Sistem & Health Check [ACTIVE]
+  // Sistem & Health Check
   static const String health = '/health';
 
-  // Autentikasi [PLANNED]
+  // Autentikasi
   static const String authLogin = '/auth/login';
   static const String authRegister = '/auth/register';
   static const String authMe = '/auth/me';
   static const String authLogout = '/auth/logout';
 
-  // Kegiatan Workshop [PLANNED]
+  // Kegiatan Workshop (dengan token peserta: menyertakan `myRegistration`)
   static const String workshops = '/workshops';
-  static String workshopDetail(String id) => '/workshops/$id';
+  static String workshopDetail(String idOrSlug) =>
+      '/workshops/${Uri.encodeComponent(idOrSlug)}';
 
-  // Pendaftaran Workshop [PLANNED]
+  // Pendaftaran Workshop
   static const String registrations = '/registrations';
   static const String myRegistrations = '/registrations/my';
-  static String cancelRegistration(String id) => '/registrations/$id/cancel';
+  static String cancelRegistration(int registrationId) =>
+      '/registrations/$registrationId/cancel';
 
-  // Presensi Kehadiran [PLANNED]
+  // Presensi Kehadiran
+  /// Offline: kode QR panitia + lokasi GPS (geofence)
   static const String attendanceCheckIn = '/attendance/check-in';
-  // PROPOSED: status kehadiran peserta per kegiatan
-  static String myAttendance(String workshopId) => '/attendance/my/$workshopId';
 
-  // Sertifikat [PLANNED]
+  /// Online: unggah screenshot bukti (menunggu verifikasi panitia)
+  static const String attendanceUpload = '/attendance/upload';
+
+  // Sertifikat
   static const String myCertificates = '/certificates/my';
-  static String verifyCertificate(String serialNumber) => '/certificates/verify/$serialNumber';
-  // PROPOSED: unduh file sertifikat PDF
-  static String downloadCertificate(String id) => '/certificates/$id/download';
-  // PROPOSED: pengajuan perbaikan sertifikat
-  static String certificateCorrection(String id) => '/certificates/$id/correction-requests';
-}
+  static String verifyCertificate(String serialNumber) =>
+      '/certificates/verify/${Uri.encodeComponent(serialNumber)}';
+  static String downloadCertificate(String code) =>
+      '/certificates/issued/${Uri.encodeComponent(code)}/pdf';
+  static const String certificateCorrections = '/certificates/corrections';
 
+  // Notifikasi
+  static const String notifications = '/notifications';
+  static const String notificationsRead = '/notifications/read';
+}

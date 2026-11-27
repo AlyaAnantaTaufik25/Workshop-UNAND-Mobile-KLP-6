@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai untuk memindai QR presensi dari panitia kegiatan.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lokasi dipakai untuk memastikan Anda berada di area kegiatan saat presensi.</string>
 	<!-- App Transport Security untuk koneksi server backend lokal saat pengembangan -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

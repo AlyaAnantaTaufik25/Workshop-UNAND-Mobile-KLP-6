@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/id_date.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 import '../../workshops/widgets/workshop_card.dart';
 
@@ -10,20 +11,21 @@ class MyRegistrationsScreen extends ConsumerWidget {
   const MyRegistrationsScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(previewProvider);
+    final state = ref.watch(participantStoreProvider);
+    final store = ref.read(participantStoreProvider.notifier);
     return DefaultTabController(
         length: 3,
         child: Scaffold(
           appBar: AppBar(
-              title: const Text('Kegiatan Saya'),
+              title: const PageTitle('Kegiatan Saya'),
               bottom: const TabBar(
                   labelColor: AppColors.primary,
                   unselectedLabelColor: AppColors.muted,
                   indicatorColor: AppColors.primary,
                   indicatorSize: TabBarIndicatorSize.tab,
                   labelStyle: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 10,
+                      fontFamily: AppTheme.fontFamily,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700),
                   tabs: [
                     Tab(text: 'Akan Datang'),
@@ -32,37 +34,50 @@ class MyRegistrationsScreen extends ConsumerWidget {
                   ])),
           body: TabBarView(
               children: WorkshopPhase.values.map((phase) {
-            final registrations = state.registrations
-                .where((r) => findWorkshop(r.workshopId)?.phase == phase)
+            final registrations = state.registrations.values
+                .where((r) => r.workshop.phase == phase)
                 .toList();
+            if (state.loading && !state.loaded) {
+              return const Center(child: CircularProgressIndicator());
+            }
             if (registrations.isEmpty) {
-              return SingleChildScrollView(
-                  child: AppEmptyState(
+              return RefreshIndicator(
+                  onRefresh: store.refresh,
+                  child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(children: [
+                    if (state.error != null)
+                      Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                          child: LoadErrorBanner(state.error!,
+                              onRetry: store.refresh)),
+                    AppEmptyState(
                       icon: Icons.calendar_month_outlined,
                       title: 'Belum ada kegiatan',
                       message: phase == WorkshopPhase.upcoming
                           ? 'Belum ada kegiatan yang akan datang. Temukan kegiatan menarik untuk diikuti.'
                           : 'Tidak ada kegiatan pada kategori ini.',
                       action: AppButton('Cari Kegiatan',
-                          onPressed: () => context.go('/workshops'))));
+                          onPressed: () => context.go('/workshops'))),
+                  ])));
             }
-            return ListView.separated(
+            return RefreshIndicator(
+                onRefresh: store.refresh,
+                child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 itemCount: registrations.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final r = registrations[index];
-                  final w = findWorkshop(r.workshopId)!;
+                  final w = r.workshop;
                   return SurfaceCard(
                       padding: const EdgeInsets.all(14),
                       child: Column(children: [
                         Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ClipRRect(
-                                  borderRadius: BorderRadius.circular(9),
-                                  child:
-                                      WorkshopImage(w, width: 86, height: 105)),
+                              _dateBox(w),
                               const SizedBox(width: 12),
                               Expanded(
                                   child: Column(
@@ -82,14 +97,14 @@ class MyRegistrationsScreen extends ConsumerWidget {
                                     const SizedBox(height: 7),
                                     Text(w.shortDate,
                                         style: const TextStyle(
-                                            fontSize: 9,
+                                            fontSize: 11,
                                             color: AppColors.muted)),
                                     if (w.delivery ==
                                         WorkshopDelivery.online) ...[
                                       const SizedBox(height: 4),
                                       const Text('Tautan tersedia H-1',
                                           style: TextStyle(
-                                              fontSize: 9,
+                                              fontSize: 11,
                                               color: AppColors.muted)),
                                     ],
                                   ]))
@@ -97,28 +112,41 @@ class MyRegistrationsScreen extends ConsumerWidget {
                         const SizedBox(height: 13),
                         const Divider(),
                         const SizedBox(height: 11),
-                        const Row(
+                        Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Status Pendaftaran',
-                                  style: TextStyle(
-                                      fontSize: 9, color: AppColors.muted)),
-                              StatusBadge('Terdaftar')
+                              const Expanded(
+                                  child: Text('Status Pendaftaran',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.muted))),
+                              const SizedBox(width: 8),
+                              StatusBadge(r.statusLabel,
+                                  tone: r.isWaiting
+                                      ? BadgeTone.amber
+                                      : BadgeTone.green)
                             ]),
                         const SizedBox(height: 8),
                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Status Kehadiran',
-                                  style: TextStyle(
-                                      fontSize: 9, color: AppColors.muted)),
+                              const Expanded(
+                                  child: Text('Status Kehadiran',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.muted))),
+                              const SizedBox(width: 8),
                               StatusBadge(r.attendanceLabel,
-                                  tone: r.attendance ==
+                                  tone: r.isWaiting ||
+                                          r.attendance ==
                                               AttendanceStatus.pending ||
                                           r.attendance ==
                                               AttendanceStatus.submitted
                                       ? BadgeTone.amber
-                                      : r.attendance == AttendanceStatus.absent
+                                      : r.attendance ==
+                                                  AttendanceStatus.absent ||
+                                              r.attendance ==
+                                                  AttendanceStatus.rejected
                                           ? BadgeTone.red
                                           : BadgeTone.green)
                             ]),
@@ -151,10 +179,56 @@ class MyRegistrationsScreen extends ConsumerWidget {
                                 w.days.length > 1
                                     ? 'Lihat Presensi Harian'
                                     : 'Lihat Status Kehadiran',
-                                style: const TextStyle(fontSize: 10))),
+                                style: const TextStyle(fontSize: 11))),
+                        if (r.canCancel)
+                          TextButton(
+                              onPressed: () => _cancel(context, ref, r),
+                              style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.red),
+                              child: const Text('Batalkan Pendaftaran',
+                                  style: TextStyle(fontSize: 11))),
                       ]));
-                });
+                }));
           }).toList()),
         ));
+  }
+
+  /// `.peserta-datebox`: tanggal mulai kegiatan
+  static Widget _dateBox(Workshop w) {
+    final start = IdDate.parse(w.days.first.id) ?? DateTime.now();
+    return DateBox(
+        day: '${start.day}',
+        month: IdDate.shortMonth(start),
+        muted: w.phase == WorkshopPhase.finished);
+  }
+
+  Future<void> _cancel(
+      BuildContext context, WidgetRef ref, Registration registration) async {
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+                title: const Text('Batalkan pendaftaran?',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                content: Text(
+                    'Kursi Anda pada "${registration.workshop.title}" akan diberikan ke peserta berikutnya.'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('Tidak')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('Ya, Batalkan',
+                          style: TextStyle(color: AppColors.red))),
+                ]));
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref
+          .read(participantStoreProvider.notifier)
+          .cancelRegistration(registration.workshopId);
+      if (context.mounted) showMessage(context, 'Pendaftaran dibatalkan.');
+    } catch (e) {
+      if (context.mounted) showMessage(context, errorMessage(e), error: true);
+    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 
@@ -16,6 +16,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _visible = false;
+  bool _busy = false;
+  bool _restoring = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pulihkan sesi tersimpan; router berpindah otomatis bila masih berlaku
+    Future.microtask(() async {
+      try {
+        await ref.read(participantStoreProvider.notifier).restoreSession();
+      } catch (e) {
+        if (mounted) setState(() => _error = errorMessage(e));
+      } finally {
+        if (mounted) setState(() => _restoring = false);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -24,9 +42,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _signIn(ParticipantProfile profile) {
-    ref.read(previewProvider.notifier).signIn(profile);
-    context.go('/workshops');
+  Future<void> _signIn() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(participantStoreProvider.notifier)
+          .signIn(_email.text, _password.text);
+      if (mounted) context.go('/workshops');
+    } catch (e) {
+      if (mounted) setState(() => _error = errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -38,10 +69,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(
                 24, MediaQuery.paddingOf(context).top + 30, 24, 42),
-            decoration: const BoxDecoration(
-                color: AppColors.primary,
-                borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(28))),
+            // Panel kiri halaman login web (.login-left, --green-900)
+            color: const Color(0xFF1B4332),
             child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -51,10 +80,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   SizedBox(height: 13),
                   Text('Selamat Datang',
                       style: TextStyle(
-                          fontSize: 37,
-                          height: 1.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.5,
+                          fontSize: 30,
+                          height: 1.3,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.5,
                           color: Colors.white)),
                   SizedBox(height: 8),
                   SizedBox(
@@ -74,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: const EdgeInsets.fromLTRB(18, 22, 18, 26),
                 decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFFEEF0F2)),
                     boxShadow: const [
                       BoxShadow(
@@ -90,33 +119,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Text('Mahasiswa UNAND',
+                          Text('Masuk Peserta',
                               style: TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.w700)),
                           SizedBox(height: 3),
-                          Text('Gunakan akun akademik kampus Anda.',
+                          Text(
+                              'Mahasiswa UNAND dan peserta umum memakai email & kata sandi akun Workshop UNAND.',
                               style: TextStyle(
                                   fontSize: 11, color: AppColors.muted)),
                         ])),
                   ]),
-                  const SizedBox(height: 16),
-                  AppButton('Masuk sebagai Mahasiswa',
-                      onPressed: () => _signIn(ParticipantProfile.student)),
-                  const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 22),
-                      child: Row(children: [
-                        Expanded(child: Divider()),
-                        Expanded(
-                            flex: 4,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: Text('atau masuk sebagai peserta umum',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                      fontSize: 10, color: Color(0xFF94A3B8))),
-                            )),
-                        Expanded(child: Divider()),
-                      ])),
+                  const SizedBox(height: 20),
+                  if (_restoring)
+                    const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: LinearProgressIndicator(minHeight: 2)),
+                  if (_error != null) ...[
+                    InfoNote(_error!, warning: true),
+                    const SizedBox(height: 16),
+                  ],
                   Form(
                       key: _form,
                       child: Column(children: [
@@ -131,11 +152,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         LabeledField(
                             label: 'Kata Sandi',
                             controller: _password,
-                            hint: 'Minimal 6 karakter',
+                            hint: 'Kata sandi akun Anda',
                             icon: Icons.lock_outline_rounded,
                             obscure: !_visible,
-                            validator: validatePassword,
-                            onSubmitted: (_) => _generalLogin(),
+                            validator: requiredValue,
+                            onSubmitted: (_) => _signIn(),
                             suffix: IconButton(
                                 tooltip: _visible
                                     ? 'Sembunyikan kata sandi'
@@ -148,7 +169,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         : Icons.visibility_outlined,
                                     size: 18))),
                         const SizedBox(height: 16),
-                        AppButton('Masuk', onPressed: _generalLogin),
+                        AppButton(_busy ? 'Memproses...' : 'Masuk',
+                            onPressed: _busy || _restoring ? null : _signIn),
                       ])),
                   const SizedBox(height: 22),
                   Wrap(
@@ -165,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     const EdgeInsets.symmetric(horizontal: 4),
                                 tapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap),
-                            onPressed: () => context.push('/register'),
+                            onPressed: () => context.go('/register'),
                             child: const Text('Daftar sekarang')),
                       ]),
                 ]),
@@ -174,21 +196,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               top: false,
               child: Padding(
                   padding: EdgeInsets.only(bottom: 20),
-                  child: Text('Pratinjau antarmuka • data contoh',
+                  child: Text('Terhubung ke layanan Workshop UNAND',
                       style:
-                          TextStyle(color: Color(0xFF94A3B8), fontSize: 10)))),
+                          TextStyle(color: Color(0xFF94A3B8), fontSize: 11)))),
         ])),
       );
-
-  void _generalLogin() {
-    if (_form.currentState!.validate()) {
-      _signIn(ParticipantProfile(
-          name: 'Dinda Maharani',
-          email: _email.text.trim(),
-          phone: '0813 7788 9900',
-          type: 'Peserta Umum'));
-    }
-  }
 }
 
 class _MethodIcon extends StatelessWidget {
@@ -198,7 +210,7 @@ class _MethodIcon extends StatelessWidget {
       width: 42,
       height: 42,
       decoration: BoxDecoration(
-          color: AppColors.paleGreen, borderRadius: BorderRadius.circular(11)),
+          color: AppColors.paleGreen, borderRadius: BorderRadius.circular(8)),
       child: const Icon(Icons.verified_user_outlined,
           size: 21, color: AppColors.primary));
 }

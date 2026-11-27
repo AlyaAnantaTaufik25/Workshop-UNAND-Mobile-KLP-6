@@ -1,6 +1,6 @@
 # 📱 Aplikasi Mobile Peserta - SIM Workshop UNAND
 
-> **Tampilan peserta:** antarmuka Flutter mengikuti referensi Figma. Lihat [panduan pratinjau](UI_PREVIEW.md) untuk halaman, cara menjalankan, dan batasan data simulasi. Status backend di bawah tetap terpisah dari ketersediaan tampilan.
+> **Terhubung ke backend yang sama dengan web.** Seluruh data aplikasi ini (akun, kegiatan, pendaftaran, presensi, sertifikat, notifikasi) dibaca dan ditulis langsung ke backend REST API di repositori **WorkshopFTIPPSI** (`WorkshopFTIPPSI/backend`) — backend yang juga dipakai portal web. Tidak ada lagi data contoh/simulasi: pendaftaran dari HP langsung terlihat di portal Humas, dan presensi yang diverifikasi panitia di web langsung terlihat di HP.
 
 
 Aplikasi mobile berbasis **Flutter** ini dikembangkan untuk peserta workshop di lingkungan Universitas Andalas, baik kalangan mahasiswa UNAND maupun masyarakat umum. Melalui aplikasi ini, peserta dapat menjelajahi katalog kegiatan workshop, mendaftar ke kegiatan yang diinginkan, melakukan presensi berbasis pemindaian QR Code dinamis dan validasi radius lokasi (*geofencing*), memantau riwayat serta status kehadiran, mengunduh sertifikat resmi berformat PDF dengan tanda tangan elektronik, hingga mengajukan permohonan perbaikan data sertifikat secara mandiri. Seluruh pertukaran data terhubung langsung ke backend RESTful API yang sama dengan platform web pengelola.
@@ -37,19 +37,19 @@ Daftar kebutuhan fungsional aktor Peserta yang bersumber dari Dokumen A2 serta s
 | No | Fitur | Keterangan | Status |
 |:--:|---|---|:---:|
 | 1 | **Cek Koneksi Server (Health Check)** | Memeriksa ketersediaan REST API backend dan database MySQL lokal | **ACTIVE** |
-| 2 | **Registrasi Akun** | Pendaftaran akun baru bagi mahasiswa UNAND dan peserta umum | PLANNED |
-| 3 | **Login Akun** | Masuk ke sistem dengan email & password untuk memperoleh token JWT | PLANNED |
-| 4 | **Logout Sesi** | Keluar dari aplikasi dan menghapus token dari secure storage | PLANNED |
-| 5 | **Kelola Profil** | Melihat informasi akun dan memperbarui data diri peserta | PLANNED |
-| 6 | **Melihat Daftar & Detail Kegiatan** | Menjelajahi katalog workshop aktif, informasi narasumber, dan jadwal | PLANNED |
-| 7 | **Mendaftar Kegiatan** | Mengajukan keikutsertaan workshop (tiket peserta / *waiting list*) | PLANNED |
-| 8 | **Melihat Kegiatan yang Diikuti** | Meninjau riwayat workshop yang telah didaftarkan serta pembatalan tiket | PLANNED |
-| 9 | **Melakukan Presensi** | Check-in kehadiran via scan QR dinamis panitia dan validasi GPS (*geofencing*) | PLANNED |
-| 10 | **Melihat Status Kehadiran** | Memantau rekap status presensi (hadir / tidak hadir) per kegiatan | PLANNED |
-| 11 | **Mengunduh Sertifikat** | Mengunduh sertifikat digital ber-TTE resmi yang telah terbit (PDF) | PLANNED |
-| 12 | **Mengajukan Perbaikan Sertifikat** | Mengajukan koreksi data (e.g., ejaan nama, gelar) pada draf sertifikat | PLANNED |
+| 2 | **Registrasi Akun** | Pendaftaran akun baru bagi mahasiswa UNAND dan peserta umum | **ACTIVE** |
+| 3 | **Login Akun** | Masuk ke sistem dengan email & password untuk memperoleh token JWT | **ACTIVE** |
+| 4 | **Logout Sesi** | Keluar dari aplikasi dan menghapus token dari secure storage | **ACTIVE** |
+| 5 | **Kelola Profil** | Melihat informasi akun dan memperbarui data diri peserta | **ACTIVE** |
+| 6 | **Melihat Daftar & Detail Kegiatan** | Menjelajahi katalog workshop aktif, informasi narasumber, dan jadwal | **ACTIVE** |
+| 7 | **Mendaftar Kegiatan** | Mengajukan keikutsertaan workshop (tiket peserta / *waiting list*) | **ACTIVE** |
+| 8 | **Melihat Kegiatan yang Diikuti** | Meninjau riwayat workshop yang telah didaftarkan serta pembatalan tiket | **ACTIVE** |
+| 9 | **Melakukan Presensi** | Check-in kehadiran via scan QR dinamis panitia dan validasi GPS (*geofencing*) | **ACTIVE** |
+| 10 | **Melihat Status Kehadiran** | Memantau rekap status presensi (hadir / tidak hadir) per kegiatan | **ACTIVE** |
+| 11 | **Mengunduh Sertifikat** | Mengunduh sertifikat digital ber-TTE resmi yang telah terbit (PDF) | **ACTIVE** |
+| 12 | **Mengajukan Perbaikan Sertifikat** | Mengajukan koreksi data (e.g., ejaan nama, gelar) pada draf sertifikat | **ACTIVE** |
 
-*Status **ACTIVE** = fitur sudah dapat diuji end-to-end. Status **PLANNED** = dalam antrean pengerjaan.*
+*Status **ACTIVE** = fitur terhubung ke backend dan dapat diuji end-to-end.*
 
 ---
 
@@ -67,9 +67,9 @@ Aplikasi mobile dibangun menggunakan **Flutter** dengan bahasa pemrograman **Dar
 | **Code Generation** | `build_runner: ^2.4.9` | Generator otomatis file mapper model (`*.g.dart`) | Terpasang |
 | **Penyimpanan Kredensial** | `flutter_secure_storage: ^9.2.2` | Penyimpanan token JWT & peran terenkripsi (Keystore/Keychain) | Terpasang |
 | **Linter & Code Style** | `flutter_lints: ^4.0.0` | Penegakan aturan penulisan kode baku Flutter | Terpasang |
-| **Pemindaian QR** | `mobile_scanner` | Pembacaan QR Code token presensi via kamera perangkat | **Rencana** |
-| **Lokasi & Geofencing** | `geolocator`, `permission_handler` | Pengecekan GPS presisi tinggi dan deteksi manipulasi lokasi | **Rencana** |
-| **Unduh & Buka PDF** | `path_provider`, `open_filex` | Menyimpan stream file sertifikat dan membuka penampil PDF | **Rencana** |
+| **Pemindaian QR** | `mobile_scanner` | Pembacaan QR Code token presensi via kamera perangkat | Terpasang |
+| **Lokasi & Geofencing** | `geolocator` | Lokasi GPS untuk validasi radius kegiatan oleh backend | Terpasang |
+| **Unduh & Buka PDF** | `path_provider`, `open_filex` | Menyimpan file sertifikat dan membuka penampil PDF | Terpasang |
 
 ---
 
@@ -100,13 +100,16 @@ Ikuti langkah-langkah terurut berikut untuk memulai aplikasi pada lingkungan lok
 
 ### Langkah 1 — Jalankan Backend Terlebih Dahulu
 
-Aplikasi mobile membutuhkan backend REST API yang aktif. Dari direktori root repositori:
+Aplikasi mobile memakai **backend yang sama dengan aplikasi web**, yaitu folder `backend/` pada repositori **WorkshopFTIPPSI** (bukan folder `backend/` templat di repositori ini). Pastikan MySQL aktif, lalu:
 
 ```bash
-cd backend
+cd WorkshopFTIPPSI/backend
 npm install
+npm run db:fresh   # sekali saja: buat tabel + data demo
 npm run dev
 ```
+
+Akun demo peserta: `peserta@unand.ac.id` / `password123`. Akun non-peserta (humas, rektor, dll.) sengaja ditolak oleh aplikasi mobile.
 
 Pastikan output terminal menampilkan pesan koneksi database, lalu buka peramban laptop dan akses:
 
@@ -282,12 +285,12 @@ mobile/
 │       │   ├── models/             # health_model.dart
 │       │   ├── providers/          # health_provider.dart (StateNotifier)
 │       │   └── views/             # health_screen.dart
-│       ├── auth/                   # [PLANNED] Login & Registrasi Peserta
-│       ├── workshops/              # [PLANNED] Katalog & Detail Kegiatan
-│       ├── registrations/          # [PLANNED] Pendaftaran & Kegiatan Saya
-│       ├── attendance/             # [PLANNED] Presensi QR & Geofencing
-│       ├── certificates/           # [PLANNED] Sertifikat Digital & Verifikasi
-│       └── profile/               # [PLANNED] Profil & Pengaturan Akun
+│       ├── auth/                   # Login & Registrasi Peserta
+│       ├── workshops/              # Katalog & Detail Kegiatan
+│       ├── registrations/          # Pendaftaran & Kegiatan Saya
+│       ├── attendance/             # Presensi QR & Geofencing
+│       ├── certificates/           # Sertifikat Digital & Verifikasi
+│       └── profile/               # Profil & Pengaturan Akun
 ├── test/
 │   └── core/network/
 │       └── api_response_test.dart  # Unit test parsing ApiResponse sukses & gagal
@@ -356,32 +359,30 @@ Tabel berikut memetakan rancangan layar pada Dokumen A3 ke modul kode dan endpoi
 | Halaman Aplikasi | Gambar A3 | Modul Kode | Endpoint REST API | Status |
 |---|:---:|---|---|:---:|
 | Health Check (Diagnostik Server) | — | `health` | `GET /api/v1/health` | **ACTIVE** |
-| Login Mahasiswa UNAND | 3.108 | `auth` | `POST /api/v1/auth/login` | PLANNED |
-| Login Peserta Umum | 3.109 | `auth` | `POST /api/v1/auth/login` | PLANNED |
-| Daftar Akun Mahasiswa | 3.110 | `auth` | `POST /api/v1/auth/register` | PLANNED |
-| Daftar Akun Peserta Umum | 3.111 | `auth` | `POST /api/v1/auth/register` | PLANNED |
-| Dashboard / Katalog Kegiatan | 3.112 | `workshops` | `GET /api/v1/workshops` | PLANNED |
-| Detail Kegiatan Workshop | 3.113 | `workshops` | `GET /api/v1/workshops/{id}` | PLANNED |
-| Pop-up Konfirmasi Daftar | 3.114 | `registrations` | `POST /api/v1/registrations` | PLANNED |
-| Pop-up Berhasil Daftar | 3.115 | `registrations` | *(Respon UI dari pendaftaran)* | PLANNED |
-| Kegiatan Saya | 3.116 | `registrations` | `GET /api/v1/registrations/my` | PLANNED |
-| Presensi Kegiatan (QR Scanner) | 3.117 | `attendance` | `POST /api/v1/attendance/check-in` | PLANNED |
-| Konfirmasi Presensi Berhasil | 3.118 | `attendance` | *(Respon UI dari check-in)* | PLANNED |
-| Status Absensi per Kegiatan | 3.119 | `attendance` | `GET /api/v1/attendance/my/{workshopId}` | **PROPOSED** |
-| Daftar Sertifikat Saya | 3.120 | `certificates` | `GET /api/v1/certificates/my` | PLANNED |
-| Detail & Unduh Sertifikat PDF | 3.121 | `certificates` | `GET /api/v1/certificates/{id}/download` | **PROPOSED** |
-| Ajukan Perbaikan Sertifikat | 3.122 | `certificates` | `POST /api/v1/certificates/{id}/correction-requests` | **PROPOSED** |
-| Profil Akun Peserta | 3.123 | `profile` | `GET /api/v1/auth/me` | PLANNED |
-| Edit Data Akun | 3.124 | `profile` | `PUT /api/v1/users/{id}` | PLANNED |
-| Filter & Pencarian Kegiatan | 3.125 | `workshops` | `GET /api/v1/workshops` | PLANNED |
+| Login Peserta (Mahasiswa & Umum) | 3.108–3.109 | `auth` | `POST /api/v1/auth/login` | **ACTIVE** |
+| Daftar Akun Mahasiswa / Umum | 3.110–3.111 | `auth` | `POST /api/v1/auth/register` | **ACTIVE** |
+| Dashboard / Katalog, Filter & Pencarian | 3.112, 3.125 | `workshops` | `GET /api/v1/workshops` | **ACTIVE** |
+| Detail Kegiatan Workshop | 3.113 | `workshops` | `GET /api/v1/workshops` (data sama) | **ACTIVE** |
+| Konfirmasi & Berhasil Daftar (termasuk waiting list) | 3.114–3.115 | `registrations` | `POST /api/v1/registrations` | **ACTIVE** |
+| Kegiatan Saya & Batalkan Pendaftaran | 3.116 | `registrations` | `myRegistration` pada `GET /workshops`, `PATCH /api/v1/registrations/{id}/cancel` | **ACTIVE** |
+| Presensi Offline (QR panitia + GPS) | 3.117–3.118 | `attendance` | `POST /api/v1/attendance/check-in` | **ACTIVE** |
+| Presensi Online (unggah screenshot) | — | `attendance` | `POST /api/v1/attendance/upload` | **ACTIVE** |
+| Status Presensi Harian | 3.119 | `attendance` | `myRegistration.attendanceDays` pada `GET /workshops` | **ACTIVE** |
+| Daftar Sertifikat Saya | 3.120 | `certificates` | `GET /api/v1/certificates/my` | **ACTIVE** |
+| Detail & Unduh Sertifikat PDF | 3.121 | `certificates` | `GET /api/v1/certificates/issued/{kode}/pdf` | **ACTIVE** |
+| Ajukan Perbaikan Sertifikat | 3.122 | `certificates` | `POST /api/v1/certificates/corrections`, `GET /api/v1/certificates/corrections` | **ACTIVE** |
+| Verifikasi Sertifikat (publik) | — | `certificates` | `GET /api/v1/certificates/verify/{nomor}` | **ACTIVE** |
+| Notifikasi | — | `notifications` | `GET /api/v1/notifications`, `PATCH /api/v1/notifications/read` | **ACTIVE** |
+| Profil & Edit Data Akun | 3.123–3.124 | `profile` | `GET /api/v1/auth/me`, `PUT /api/v1/auth/me` | **ACTIVE** |
 
-### Keterangan Status
+### Cara Mobile Terhubung ke Backend
 
-| Status | Arti |
-|:---:|---|
-| **ACTIVE** | Sudah diimplementasikan dan dapat diuji saat ini |
-| **PLANNED** | Sudah terdaftar di [`../docs/api-contract.md`](../docs/api-contract.md), menunggu giliran pengerjaan |
-| **PROPOSED** | Dibutuhkan oleh alur mobile tetapi **belum ada** di dokumen kontrak API — perlu dikoordinasikan lebih lanjut dengan tim backend |
+- **Autentikasi:** login/registrasi mengembalikan `data.token` (JWT). Token disimpan di secure storage dan dikirim sebagai `Authorization: Bearer <token>` pada setiap permintaan (`AuthInterceptor`). Backend menerima Bearer maupun cookie, sehingga web (cookie) dan mobile (Bearer) memakai endpoint yang sama.
+- **Hanya peserta:** bila role akun bukan `peserta`, sesi tidak disimpan dan muncul pesan *"Akun ini bukan akun peserta. Silakan gunakan aplikasi web."*
+- **Sesi berakhir:** respons `401` menghapus sesi dan router kembali ke halaman login.
+- **Presensi:** backend hanya menerima presensi untuk tanggal sesi aktif (`attendanceDate`); aplikasi membuka tombol presensi tepat pada hari tersebut. Batas screenshot 2 MB (sama dengan backend). Kode QR panitia dapat dipindai atau diketik.
+- **URL berkas:** URL poster/bukti dari server yang memakai `localhost` otomatis diganti dengan host `API_BASE_URL` agar dapat dibuka dari emulator/HP.
+- **Kontrak teruji:** `WorkshopFTIPPSI/backend/tests/mobile.test.js` menguji seluruh alur di atas persis seperti klien mobile (tanpa cookie, tanpa header Origin).
 
 ### Struktur Menu Navigasi Bawah
 
@@ -398,20 +399,20 @@ Antarmuka utama peserta menggunakan *bottom navigation bar* dengan 4 menu utama:
 
 ---
 
-## 📍 Catatan Fitur Presensi (Rencana Alur)
+## 📍 Catatan Fitur Presensi
 
-Fitur presensi merupakan nilai inovasi utama aplikasi mobile SIM Workshop UNAND yang mengombinasikan **QR Code Dinamis** dan **Validasi Radius Geofencing**. Berikut alur yang direncanakan:
+Fitur presensi merupakan nilai inovasi utama aplikasi mobile SIM Workshop UNAND yang mengombinasikan **QR Code Dinamis** dan **Validasi Radius Geofencing**. Berikut alurnya:
 
-1. **Permintaan Izin Terisolasi**: Izin kamera (`CAMERA`) hanya diminta saat peserta menekan tombol buka pemindai. Izin lokasi presisi (`ACCESS_FINE_LOCATION`) hanya diminta ketika pengguna memasuki layar presensi aktif — tidak diminta secara global saat aplikasi pertama kali dibuka.
+1. **Permintaan Izin Terisolasi**: Izin kamera (`CAMERA`) hanya diminta saat peserta menekan tombol **Pindai QR dengan Kamera**. Izin lokasi (`ACCESS_FINE_LOCATION`) hanya diminta saat presensi dikirim untuk kegiatan yang memiliki titik lokasi — tidak diminta saat aplikasi dibuka.
 
 2. **Mekanisme Check-In di Lapangan**:
    - Kamera memindai token QR yang ditayangkan oleh panitia workshop (QR berganti secara berkala).
    - Package `geolocator` mengambil koordinat lintang dan bujur terkini pengguna dengan akurasi tinggi dalam batas waktu (*timeout*) tertentu.
-   - Data `qr_token`, `latitude`, dan `longitude` langsung dikirimkan ke endpoint `POST /api/v1/attendance/check-in`.
+   - Data `workshopId`, `code`, `latitude`, dan `longitude` dikirimkan ke endpoint `POST /api/v1/attendance/check-in`. Kode 6 karakter di bawah QR juga dapat diketik manual.
 
 3. **Validasi Terpusat di Server**: Server backend memvalidasi masa berlaku token QR, menghitung jarak koordinat GPS peserta terhadap lokasi gedung/ruangan workshop, dan memeriksa status pendaftaran. Aplikasi mobile bertugas menyajikan notifikasi keberhasilan atau pesan alasan penolakan dari server.
 
-4. **Deteksi Manipulasi Lokasi**: Di platform Android, direncanakan memanfaatkan properti `isMocked` dari package `geolocator` untuk mendeteksi penggunaan aplikasi GPS palsu (*fake GPS*) dan mencegah kecurangan titip absen jarak jauh.
+4. **Deteksi Manipulasi Lokasi (pengembangan lanjutan)**: Di platform Android, dapat memanfaatkan properti `isMocked` dari package `geolocator` untuk mendeteksi penggunaan aplikasi GPS palsu (*fake GPS*) dan mencegah kecurangan titip absen jarak jauh.
 
 ---
 
@@ -493,12 +494,12 @@ Daftar tahapan implementasi fitur secara berurutan:
 - [x] Inisiasi proyek Flutter, struktur modular, dan integrasi Riverpod + GoRouter
 - [x] Konfigurasi koneksi jaringan Dio, interceptor token JWT, dan penanganan error standar
 - [x] Fitur aktif diagnostik server: **Cek Kesehatan API** (`GET /api/v1/health`)
-- [ ] **Modul Auth**: Layar login & registrasi (mahasiswa dan umum) + validasi role peserta + integrasi token JWT
-- [ ] **Modul Workshops**: Tampilan daftar kegiatan, pencarian, filter, dan halaman detail workshop
-- [ ] **Modul Registrations**: Alur pendaftaran kegiatan, validasi kuota, *waiting list*, dan pembatalan tiket
-- [ ] **Modul Attendance**: Pemasangan `mobile_scanner` + `geolocator`, implementasi alur scan QR + validasi GPS, dan pengujian di HP fisik
-- [ ] **Modul Certificates**: Tampilan daftar sertifikat, unduh PDF via `open_filex`, dan formulir pengajuan koreksi
-- [ ] **Modul Profile**: Pengelolaan data diri peserta, ubah kata sandi, dan halaman logout
+- [x] **Modul Auth**: Layar login & registrasi (mahasiswa dan umum) + validasi role peserta + integrasi token JWT
+- [x] **Modul Workshops**: Tampilan daftar kegiatan, pencarian, filter, dan halaman detail workshop
+- [x] **Modul Registrations**: Alur pendaftaran kegiatan, validasi kuota, *waiting list*, dan pembatalan tiket
+- [x] **Modul Attendance**: Pemasangan `mobile_scanner` + `geolocator`, implementasi alur scan QR + validasi GPS, dan pengujian di HP fisik
+- [x] **Modul Certificates**: Tampilan daftar sertifikat, unduh PDF via `open_filex`, dan formulir pengajuan koreksi
+- [x] **Modul Profile**: Pengelolaan data diri peserta dan logout (ubah kata sandi tersedia di portal web)
 - [ ] Pengujian menyeluruh di perangkat fisik Android dan iOS (opsional)
 
 ---

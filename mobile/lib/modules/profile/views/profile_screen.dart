@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 
@@ -9,37 +9,37 @@ class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = ref.watch(previewProvider).profile ?? ParticipantProfile.student;
+    final p = ref.watch(participantStoreProvider).profile;
+    if (p == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
-        appBar: AppBar(title: const Text('Profil')),
+        appBar: AppBar(title: const PageTitle('Profil')),
         body: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 30, 20, 28),
             child: Column(children: [
-              Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border:
-                          Border.all(color: const Color(0xFFBBD9C3), width: 2)),
-                  child: CircleAvatar(
-                      radius: 35,
-                      backgroundColor: AppColors.green,
-                      child: Text(
-                          p.name
-                              .split(' ')
-                              .where((s) => s.isNotEmpty)
-                              .take(2)
-                              .map((s) => s[0])
-                              .join(),
-                          style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)))),
+              // .peserta-avatar--large: lingkaran tint, inisial hijau
+              CircleAvatar(
+                  radius: 34,
+                  backgroundColor: AppColors.paleGreen,
+                  child: Text(
+                      p.name
+                          .split(' ')
+                          .where((s) => s.isNotEmpty)
+                          .take(2)
+                          .map((s) => s[0].toUpperCase())
+                          .join(),
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary))),
               const SizedBox(height: 12),
               Text(p.name,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w800)),
+                      fontSize: 18,
+                      color: AppColors.heading,
+                      fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               StatusBadge(p.type),
               const SizedBox(height: 28),
@@ -108,19 +108,21 @@ class ProfileScreen extends ConsumerWidget {
                                                   color: AppColors.red)))
                                     ]));
                         if (confirmed == true && context.mounted) {
-                          ref.read(previewProvider.notifier).signOut();
-                          context.go('/login');
+                          await ref
+                              .read(participantStoreProvider.notifier)
+                              .signOut();
+                          if (context.mounted) context.go('/login');
                         }
                       },
                       icon: const Icon(Icons.logout_rounded, size: 18),
                       label: const Text('Keluar'))),
               const SizedBox(height: 26),
-              const Text('Workshop UNAND · Versi prototipe 1.0',
-                  style: TextStyle(fontSize: 9, color: Color(0xFF94A3B8))),
+              const Text('Workshop UNAND · Versi 1.0',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
               TextButton(
                   onPressed: () => context.push('/health'),
                   child: const Text('Cek koneksi server',
-                      style: TextStyle(fontSize: 10))),
+                      style: TextStyle(fontSize: 11))),
             ])));
   }
 }
@@ -133,15 +135,37 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _form = GlobalKey<FormState>();
-  late final ParticipantProfile _profile;
   late final TextEditingController _name, _email, _phone;
+  bool _busy = false;
+  String? _error;
   @override
   void initState() {
     super.initState();
-    _profile = ref.read(previewProvider).profile ?? ParticipantProfile.student;
-    _name = TextEditingController(text: _profile.name);
-    _email = TextEditingController(text: _profile.email);
-    _phone = TextEditingController(text: _profile.phone);
+    final profile = ref.read(participantStoreProvider).profile;
+    _name = TextEditingController(text: profile?.name ?? '');
+    _email = TextEditingController(text: profile?.email ?? '');
+    _phone = TextEditingController(
+        text: profile == null || profile.phone == '-' ? '' : profile.phone);
+  }
+
+  Future<void> _save() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(participantStoreProvider.notifier)
+          .updateProfile(nama: _name.text, telepon: _phone.text);
+      if (!mounted) return;
+      context.pop();
+      showMessage(context, 'Profil berhasil diperbarui.');
+    } catch (e) {
+      if (mounted) setState(() => _error = errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -188,22 +212,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 ? 'Nomor telepon minimal 10 digit.'
                                 : null),
                     const SizedBox(height: 22),
-                    AppButton('Simpan Perubahan', onPressed: () {
-                      if (!_form.currentState!.validate()) return;
-                      ref.read(previewProvider.notifier).updateProfile(
-                          ParticipantProfile(
-                              name: _name.text.trim(),
-                              email: _profile.email,
-                              phone: _phone.text.trim(),
-                              type: _profile.type,
-                              nim: _profile.nim));
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Profil berhasil diperbarui.')));
-                    }),
+                    if (_error != null) ...[
+                      InfoNote(_error!, warning: true),
+                      const SizedBox(height: 16),
+                    ],
+                    AppButton(_busy ? 'Menyimpan...' : 'Simpan Perubahan',
+                        onPressed: _busy ? null : _save),
                     const SizedBox(height: 18),
                     const InfoNote(
-                        'Perubahan pada pratinjau ini disimpan selama aplikasi terbuka.',
+                        'Perubahan tersimpan di server dan juga terlihat di portal web.',
                         icon: Icons.shield_outlined),
                   ]))));
 }

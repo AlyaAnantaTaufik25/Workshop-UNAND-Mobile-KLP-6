@@ -1,29 +1,27 @@
 import 'package:dio/dio.dart';
 import '../../../core/constants/api_endpoints.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/network/api_call.dart';
+import '../../workshops/data/workshop_api_service.dart';
 
-/// Service API Pendaftaran Workshop Peserta [PLANNED]
+/// Service API Pendaftaran Workshop Peserta
 class RegistrationApiService {
   final Dio _dio;
 
   RegistrationApiService(this._dio);
 
-  /// Mendaftar ke workshop (POST /registrations)
-  // TODO: Hubungkan ke backend saat endpoint siap
-  Future<ApiResponse<dynamic>> registerToWorkshop(String idKegiatan) async {
-    throw UnimplementedError('Endpoint POST ${ApiEndpoints.registrations} masih dalam rencana pengembangan backend.');
-  }
+  /// POST /registrations — mendaftar (otomatis masuk waiting list bila kuota
+  /// penuh). Mengembalikan detail kegiatan terbaru beserta pendaftaran saya.
+  Future<WorkshopWithRegistration> registerToWorkshop(String workshopId) =>
+      apiCall(
+        () => _dio
+            .post(ApiEndpoints.registrations, data: {'workshopId': workshopId}),
+        WorkshopWithRegistration.fromJson,
+      );
 
-  /// Mengambil daftar workshop yang didaftarkan oleh peserta (GET /registrations/my)
-  // TODO: Hubungkan ke backend saat endpoint siap
-  Future<ApiResponse<List<dynamic>>> getMyRegistrations() async {
-    throw UnimplementedError('Endpoint GET ${ApiEndpoints.myRegistrations} masih dalam rencana pengembangan backend.');
-  }
-
-  /// Membatalkan pendaftaran (PATCH /registrations/:id/cancel)
-  // TODO: Hubungkan ke backend saat endpoint siap
-  Future<ApiResponse<dynamic>> cancelRegistration(String registrationId) async {
-    throw UnimplementedError('Endpoint PATCH ${ApiEndpoints.cancelRegistration(registrationId)} masih dalam rencana pengembangan backend.');
-  }
+  /// PATCH /registrations/:id/cancel — membatalkan pendaftaran
+  Future<WorkshopWithRegistration> cancelRegistration(int registrationId) =>
+      apiCall(
+        () => _dio.patch(ApiEndpoints.cancelRegistration(registrationId)),
+        WorkshopWithRegistration.fromJson,
+      );
 }
-

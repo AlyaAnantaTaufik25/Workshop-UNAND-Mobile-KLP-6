@@ -3,11 +3,17 @@
 
     <!-- Izin Akses Jaringan Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Presensi offline: kamera untuk QR & lokasi untuk validasi radius -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:label="Workshop UNAND"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -31,6 +31,14 @@ dependencies:
   # Screenshot evidence for online attendance (web and mobile)
   file_selector: ^1.1.0
 
+  # Presensi offline: pindai QR panitia & lokasi GPS (geofence)
+  mobile_scanner: ^7.0.0
+  geolocator: ^14.0.0
+
+  # Unduh & buka sertifikat PDF
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -44,7 +52,8 @@ flutter:
     - assets/images/
     - assets/images/unand-logo.png
   fonts:
-    - family: Inter
+    # Sama dengan portal web peserta (Plus Jakarta Sans, lisensi OFL)
+    - family: PlusJakartaSans
       fonts:
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/PlusJakartaSans.ttf
 

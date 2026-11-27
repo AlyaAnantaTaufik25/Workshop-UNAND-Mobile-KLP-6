@@ -11,13 +11,25 @@ import '../modules/profile/views/profile_screen.dart';
 import '../modules/registrations/views/my_registrations_screen.dart';
 import '../modules/workshops/views/workshop_detail_screen.dart';
 import '../modules/workshops/views/workshop_list_screen.dart';
+import '../core/network/network_providers.dart';
 import '../core/widgets/workshop_widgets.dart';
 import 'scaffold_with_nav_bar.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
+/// Halaman yang boleh dibuka tanpa login
+const _publicPaths = {'/login', '/register', '/health', '/certificates/verify'};
+
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
+  refreshListenable: signedIn,
+  redirect: (context, state) {
+    final path = state.matchedLocation;
+    if (!signedIn.value && !_publicPaths.contains(path)) return '/login';
+    if (signedIn.value && path == '/login') return '/workshops';
+    return null;
+  },
   errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Halaman tidak ditemukan')),
       body: AppEmptyState(
@@ -36,7 +48,7 @@ final appRouter = GoRouter(
     GoRoute(
         path: '/attendance',
         builder: (_, state) => AttendanceScreen(
-            workshopId: state.uri.queryParameters['workshop'] ?? 'kuliah-ai',
+            workshopId: state.uri.queryParameters['workshop'] ?? '',
             dayId: state.uri.queryParameters['day'])),
     GoRoute(
         path: '/attendance/status/:id',

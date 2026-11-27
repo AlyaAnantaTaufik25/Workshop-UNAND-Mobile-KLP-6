@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 import '../providers/screenshot_provider.dart';
@@ -23,19 +23,23 @@ class _OnlineAttendanceScreenState
   ScreenshotEvidence? _evidence;
   String? _error;
   bool _picking = false;
+  bool _sending = false;
 
   @override
   Widget build(BuildContext context) {
     final w = widget.workshop;
     final day = widget.day;
-    final registration = ref.watch(previewProvider).registrationFor(w.id);
+    final registration =
+        ref.watch(participantStoreProvider).registrationFor(w.id);
     final record = registration?.attendanceFor(day);
     final submitted = record?.status == AttendanceStatus.submitted;
     final recorded = submitted || record?.status == AttendanceStatus.present;
     final canSubmit = registration != null &&
+        !registration.isWaiting &&
         day.window == AttendanceWindow.open &&
         !recorded;
-    final evidence = record?.evidence ?? _evidence;
+    final evidence = recorded ? null : _evidence;
+    final serverEvidence = recorded ? record?.evidenceUrl : null;
     final dayNumber = w.days.indexOf(day) + 1;
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi Online')),
@@ -72,17 +76,47 @@ class _OnlineAttendanceScreenState
               InfoNote(
                   registration == null
                       ? 'Daftar kegiatan terlebih dahulu untuk melakukan presensi.'
-                      : day.window == AttendanceWindow.notOpen
+                      : registration.isWaiting
+                          ? 'Anda masih dalam waiting list. Presensi dapat dilakukan setelah mendapat kursi.'
+                          : day.window == AttendanceWindow.notOpen
                           ? 'Presensi hari ini belum dibuka oleh panitia.'
                           : 'Presensi hari ini telah ditutup oleh panitia.',
                   warning: true),
             ] else ...[
+              if (record?.status == AttendanceStatus.rejected) ...[
+                InfoNote(
+                    'Bukti sebelumnya ditolak panitia${record?.reason != null ? ': ${record!.reason}' : '.'} Silakan unggah ulang.',
+                    warning: true),
+                const SizedBox(height: 10),
+              ],
               const InfoNote(
                   'Unggah screenshot keikutsertaan Anda pada pertemuan online sesuai hari yang dipilih. Pastikan nama dan kegiatan terlihat jelas.'),
             ],
             const SizedBox(height: 22),
             const SectionHeading('Bukti Kehadiran'),
-            if (evidence != null)
+            if (serverEvidence != null)
+              SurfaceCard(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(serverEvidence,
+                            height: 190,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            cacheWidth: 1000,
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox(height: 8),
+                            semanticLabel:
+                                'Screenshot bukti kehadiran hari ke-$dayNumber')),
+                    const SizedBox(height: 10),
+                    Text(record?.evidenceName ?? 'Bukti kehadiran',
+                        style: const TextStyle(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2),
+                  ]))
+            else if (evidence != null)
               SurfaceCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +146,7 @@ class _OnlineAttendanceScreenState
                   SizedBox(height: 12),
                   Text('Belum ada screenshot', style: TextStyle(fontSize: 13)),
                   SizedBox(height: 6),
-                  Text('PNG atau JPG, maksimal 5 MB',
+                  Text('PNG atau JPG, maksimal 2 MB',
                       style: TextStyle(fontSize: 11, color: AppColors.muted)),
                 ]),
               )),
@@ -132,14 +166,16 @@ class _OnlineAttendanceScreenState
                   icon: Icons.upload_file_outlined,
                   onPressed: _picking ? null : _pick),
               const SizedBox(height: 12),
-              AppButton('Kirim Presensi',
+              AppButton(_sending ? 'Mengirim...' : 'Kirim Presensi',
                   icon: Icons.send_outlined,
-                  onPressed: _evidence == null || _picking ? null : _submit),
+                  onPressed: _evidence == null || _picking || _sending
+                      ? null
+                      : _submit),
             ],
             const SizedBox(height: 12),
             const Text(
-                'Pratinjau: screenshot tersimpan sementara dan belum dikirim ke panitia.',
-                style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                'Screenshot dikirim ke panitia untuk diverifikasi. Status diperbarui di halaman Presensi Harian.',
+                style: TextStyle(fontSize: 11, color: AppColors.muted)),
             const SizedBox(height: 16),
             AppButton('Lihat Presensi Harian',
                 secondary: true,
@@ -169,13 +205,22 @@ class _OnlineAttendanceScreenState
     }
   }
 
-  void _submit() {
-    final saved = ref
-        .read(previewProvider.notifier)
-        .checkIn(widget.workshop.id, dayId: widget.day.id, evidence: _evidence);
-    if (!saved) {
-      setState(() => _error =
-          'Presensi tidak dapat dikirim. Periksa status presensi hari ini.');
+  Future<void> _submit() async {
+    final evidence = _evidence;
+    if (evidence == null || _sending) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(participantStoreProvider.notifier)
+          .uploadEvidence(widget.workshop.id, evidence);
+      if (mounted) setState(() => _evidence = null);
+    } catch (e) {
+      if (mounted) setState(() => _error = errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 }

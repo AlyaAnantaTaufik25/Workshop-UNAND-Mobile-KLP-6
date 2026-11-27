@@ -1,26 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/workshop_widgets.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifications = ref.watch(previewProvider).notifications;
+    final state = ref.watch(participantStoreProvider);
+    final store = ref.read(participantStoreProvider.notifier);
+    final notifications = state.notifications;
     return Scaffold(
         appBar: AppBar(title: const Text('Notifikasi'), actions: [
           TextButton(
-              onPressed: () =>
-                  ref.read(previewProvider.notifier).markRead(null),
+              onPressed: state.unread == 0 ? null : () => store.markRead(null),
               child: const SizedBox(
                   width: 64,
                   child: Text('Tandai semua dibaca',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 10))))
+                      style: TextStyle(fontSize: 11))))
         ]),
-        body: ListView.separated(
+        body: RefreshIndicator(
+            onRefresh: store.refresh,
+            child: notifications.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                        AppEmptyState(
+                            icon: Icons.notifications_none_rounded,
+                            title: 'Belum ada notifikasi',
+                            message:
+                                'Informasi pendaftaran, pengingat kegiatan, dan sertifikat akan muncul di sini.')
+                      ])
+                : ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 30),
             itemCount: notifications.length,
             separatorBuilder: (_, __) => const SizedBox(height: 9),
@@ -34,14 +49,12 @@ class NotificationsScreen extends ConsumerWidget {
                           color: n.read
                               ? AppColors.border
                               : const Color(0xFFCFE7D5)),
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(8)),
                   child: Column(children: [
                     InkWell(
                         onTap: () {
-                          ref.read(previewProvider.notifier).markRead(n.id);
-                          context.push(n.certificate
-                              ? '/certificates/${n.workshopId}'
-                              : '/workshops/${n.workshopId}');
+                          if (!n.read) store.markRead(n.id);
+                          context.go(n.route);
                         },
                         child: Padding(
                             padding: const EdgeInsets.all(14),
@@ -54,11 +67,13 @@ class NotificationsScreen extends ConsumerWidget {
                                       decoration: BoxDecoration(
                                           color: AppColors.paleGreen,
                                           borderRadius:
-                                              BorderRadius.circular(10)),
+                                              BorderRadius.circular(8)),
                                       child: Icon(
                                           n.certificate
                                               ? Icons.workspace_premium_outlined
-                                              : n.id == 'reminder'
+                                              : n.title
+                                                      .toLowerCase()
+                                                      .contains('pengingat')
                                                   ? Icons.schedule_outlined
                                                   : Icons.notifications_none,
                                           color: AppColors.primary,
@@ -85,13 +100,13 @@ class NotificationsScreen extends ConsumerWidget {
                                         const SizedBox(height: 5),
                                         Text(n.message,
                                             style: const TextStyle(
-                                                fontSize: 10,
+                                                fontSize: 11,
                                                 height: 1.5,
                                                 color: Color(0xFF475569))),
                                         const SizedBox(height: 7),
                                         Text(n.time,
                                             style: const TextStyle(
-                                                fontSize: 8,
+                                                fontSize: 10,
                                                 color: Color(0xFF94A3B8)))
                                       ])),
                                   const SizedBox(width: 10),
@@ -102,13 +117,11 @@ class NotificationsScreen extends ConsumerWidget {
                       Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
-                              onPressed: () => ref
-                                  .read(previewProvider.notifier)
-                                  .markRead(n.id),
+                              onPressed: () => store.markRead(n.id),
                               icon: const Icon(Icons.done_all, size: 14),
                               label: const Text('Tandai dibaca',
-                                  style: TextStyle(fontSize: 9)))),
+                                  style: TextStyle(fontSize: 11)))),
                   ]));
-            }));
+            })));
   }
 }

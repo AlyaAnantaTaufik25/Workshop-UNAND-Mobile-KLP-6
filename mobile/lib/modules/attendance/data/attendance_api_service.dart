@@ -1,27 +1,51 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import '../../../core/constants/api_endpoints.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/data/participant_models.dart';
+import '../../../core/network/api_call.dart';
+import '../../workshops/data/workshop_api_service.dart';
 
-/// Service API Presensi Kehadiran [PLANNED]
+/// Service API Presensi Kehadiran
 class AttendanceApiService {
   final Dio _dio;
 
   AttendanceApiService(this._dio);
 
-  /// Submit presensi dengan validasi token QR & GPS Geofence (POST /attendance/check-in)
-  // TODO: Hubungkan ke backend saat endpoint siap
-  Future<ApiResponse<dynamic>> checkIn({
-    required String qrToken,
-    required double latitude,
-    required double longitude,
-  }) async {
-    throw UnimplementedError('Endpoint POST ${ApiEndpoints.attendanceCheckIn} masih dalam rencana pengembangan backend.');
-  }
+  /// Presensi offline: kode dari QR panitia + lokasi GPS (POST /attendance/check-in)
+  ///
+  /// Kegagalan dilempar sebagai `ApiException` dengan `state`:
+  /// `invalid-code`, `outside-radius`, `location-denied`, `not-open`,
+  /// `closed`, `not-registered`, `waiting-list`, `present`, `pending`.
+  Future<WorkshopWithRegistration> checkIn({
+    required String workshopId,
+    String? code,
+    double? latitude,
+    double? longitude,
+  }) =>
+      apiCall(
+        () => _dio.post(ApiEndpoints.attendanceCheckIn, data: {
+          'workshopId': workshopId,
+          if (code != null && code.isNotEmpty) 'code': code,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+        }),
+        WorkshopWithRegistration.fromJson,
+      );
 
-  /// Status kehadiran peserta di satu kegiatan (GET /attendance/my/:workshopId)
-  // TODO: PROPOSED endpoint
-  Future<ApiResponse<dynamic>> getMyAttendance(String workshopId) async {
-    throw UnimplementedError('Endpoint GET ${ApiEndpoints.myAttendance(workshopId)} masih dalam rencana pengembangan backend.');
-  }
+  /// Presensi online: unggah screenshot bukti (POST /attendance/upload).
+  /// Status menjadi "Menunggu Verifikasi" sampai diperiksa panitia.
+  Future<WorkshopWithRegistration> uploadEvidence({
+    required String workshopId,
+    required ScreenshotEvidence evidence,
+  }) =>
+      apiCall(
+        () => _dio.post(ApiEndpoints.attendanceUpload, data: {
+          'workshopId': workshopId,
+          'fileName': evidence.name,
+          'fileData':
+              'data:${evidence.mimeType};base64,${base64Encode(evidence.bytes)}',
+        }),
+        WorkshopWithRegistration.fromJson,
+      );
 }
-

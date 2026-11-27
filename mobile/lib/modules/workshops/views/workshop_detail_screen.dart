@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/demo/preview_data.dart';
+import '../../../core/data/participant_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/workshop_widgets.dart';
 import '../widgets/workshop_card.dart';
@@ -11,7 +11,13 @@ class WorkshopDetailScreen extends ConsumerWidget {
   final String workshopId;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final w = findWorkshop(workshopId);
+    final state = ref.watch(participantStoreProvider);
+    final w = state.workshopById(workshopId);
+    if (w == null && state.loading) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('Detail Kegiatan')),
+          body: const Center(child: CircularProgressIndicator()));
+    }
     if (w == null) {
       return Scaffold(
           appBar: AppBar(title: const Text('Detail Kegiatan')),
@@ -20,10 +26,9 @@ class WorkshopDetailScreen extends ConsumerWidget {
               title: 'Kegiatan tidak ditemukan',
               message: 'Silakan kembali ke daftar kegiatan.'));
     }
-    final registered =
-        ref.watch(previewProvider).registrationFor(workshopId) != null;
+    final registration = state.registrationFor(workshopId);
+    final registered = registration != null;
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('Detail Kegiatan')),
       bottomNavigationBar: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
@@ -35,14 +40,14 @@ class WorkshopDetailScreen extends ConsumerWidget {
               child: AppButton(
                   registered
                       ? 'Lihat di Kegiatan Saya'
-                      : w.status == WorkshopStatus.full
-                          ? 'Kuota Penuh'
-                          : w.status == WorkshopStatus.closed
-                              ? 'Pendaftaran Ditutup'
-                              : 'Daftar Kegiatan',
+                      : switch (w.status) {
+                          WorkshopStatus.open => 'Daftar Kegiatan',
+                          WorkshopStatus.waitlist => 'Daftar Waiting List',
+                          _ => w.registrationLabel,
+                        },
                   onPressed: registered
                       ? () => context.go('/registrations')
-                      : w.status == WorkshopStatus.open
+                      : w.canRegister
                           ? () => _register(context, ref, w)
                           : null))),
       body: SingleChildScrollView(
@@ -62,28 +67,28 @@ class WorkshopDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(20),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (registered)
-                const StatusBadge('Terdaftar')
+              if (registration != null)
+                StatusBadge(registration.statusLabel,
+                    tone: registration.isWaiting
+                        ? BadgeTone.amber
+                        : BadgeTone.green)
               else if (w.status != WorkshopStatus.open || w.capacity == null)
-                StatusBadge(
-                    w.status == WorkshopStatus.full
-                        ? 'Kuota Penuh'
-                        : w.status == WorkshopStatus.closed
-                            ? 'Pendaftaran Ditutup'
-                            : 'Pendaftaran Terbuka',
-                    tone: w.status == WorkshopStatus.full
+                StatusBadge(w.registrationLabel,
+                    tone: w.status == WorkshopStatus.full || w.cancelled
                         ? BadgeTone.red
-                        : BadgeTone.gray),
+                        : w.status == WorkshopStatus.waitlist
+                            ? BadgeTone.amber
+                            : BadgeTone.gray),
               const SizedBox(height: 11),
               Text(w.title,
                   style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.8,
-                      height: 1.25)),
-              const SizedBox(height: 7),
-              Text(w.theme,
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                      fontSize: 21,
+                      color: AppColors.heading,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -.3,
+                      height: 1.4)),
+              const SizedBox(height: 6),
+              ThemeTag(w.theme.isEmpty ? w.kind : w.theme),
               _section(
                   'Informasi Pelaksanaan',
                   Column(children: [
@@ -97,7 +102,15 @@ class WorkshopDetailScreen extends ConsumerWidget {
                         label: 'Waktu',
                         value: w.time),
                     const SizedBox(height: 17),
-                    if (w.delivery == WorkshopDelivery.online)
+                    if (w.delivery == WorkshopDelivery.online &&
+                        registration != null &&
+                        !registration.isWaiting &&
+                        w.meetingUrl != null) ...[
+                      DetailRow(
+                          icon: Icons.link_outlined,
+                          label: 'Tautan Kegiatan',
+                          value: w.meetingUrl!),
+                    ] else if (w.delivery == WorkshopDelivery.online)
                       const InfoNote(Workshop.onlineLinkNotice,
                           icon: Icons.link_outlined)
                     else
@@ -164,7 +177,7 @@ class WorkshopDetailScreen extends ConsumerWidget {
                                       children: [
                                     const Text('Narasumber',
                                         style: TextStyle(
-                                            fontSize: 9,
+                                            fontSize: 11,
                                             color: AppColors.muted)),
                                     Text(w.speaker,
                                         style: const TextStyle(
@@ -172,11 +185,12 @@ class WorkshopDetailScreen extends ConsumerWidget {
                                             fontWeight: FontWeight.w700)),
                                     Text(w.organizer,
                                         style: const TextStyle(
-                                            fontSize: 9,
+                                            fontSize: 11,
                                             color: AppColors.muted))
                                   ]))
                             ])),
                       ])),
+              if (w.benefits.isNotEmpty)
               _section(
                   'Manfaat yang Didapatkan',
                   Column(
@@ -196,36 +210,82 @@ class WorkshopDetailScreen extends ConsumerWidget {
                           .toList())),
               _section(
                   'Informasi Pendaftaran',
-                  Column(children: [
-                    DetailRow(
-                        icon: Icons.calendar_month_outlined,
-                        label: 'Periode Pendaftaran',
-                        value: w.registrationPeriod),
-                    const SizedBox(height: 16),
-                    DetailRow(
-                        icon: Icons.groups_outlined,
-                        label: 'Kuota',
-                        value: w.capacity == null
-                            ? 'Pendaftaran terbuka tanpa batas kuota'
-                            : '${w.remaining} dari ${w.capacity} kursi tersisa')
-                  ])),
+                  // .peserta-registration-box: panel tint + sisa kursi
+                  Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                          color: AppColors.paleGreen,
+                          border: Border.all(color: const Color(0xFFCFE4D4)),
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Periode pendaftaran',
+                                style: TextStyle(
+                                    fontSize: 11, color: AppColors.muted)),
+                            const SizedBox(height: 3),
+                            Text(w.registrationPeriod,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.heading,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 14),
+                            const Text('Kuota',
+                                style: TextStyle(
+                                    fontSize: 11, color: AppColors.muted)),
+                            const SizedBox(height: 3),
+                            Text(
+                                w.capacity == null
+                                    ? 'Pendaftaran terbuka tanpa batas kuota'
+                                    : (w.remaining ?? 0) > 0
+                                        ? '${w.remaining} dari ${w.capacity} kursi tersisa'
+                                        : 'Kuota ${w.capacity} kursi sudah penuh',
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.heading,
+                                    fontWeight: FontWeight.w700)),
+                            if (w.capacity != null && w.capacity! > 0) ...[
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                  borderRadius: BorderRadius.circular(99),
+                                  child: LinearProgressIndicator(
+                                      value: (1 -
+                                              (w.remaining ?? 0) / w.capacity!)
+                                          .clamp(0.0, 1.0),
+                                      minHeight: 6,
+                                      backgroundColor: const Color(0xFFD7E8DB),
+                                      color: AppColors.green)),
+                              const SizedBox(height: 6),
+                              Text(
+                                  '${w.capacity! - (w.remaining ?? 0)} dari ${w.capacity} kursi terisi',
+                                  style: const TextStyle(
+                                      fontSize: 11, color: AppColors.muted)),
+                            ],
+                          ]))),
             ])),
       ])),
     );
   }
 
-  Widget _section(String title, Widget child) => Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 23),
-      padding: const EdgeInsets.only(top: 23),
-      decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 15),
-        child
-      ]));
+  /// Kartu konten seperti `.peserta-detail-copy` di portal web
+  Widget _section(String title, Widget child) => Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: SurfaceCard(
+          padding: const EdgeInsets.all(18),
+          child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.heading,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 14),
+                    child
+                  ]))));
 
   Future<void> _register(
       BuildContext context, WidgetRef ref, Workshop w) async {
@@ -234,7 +294,7 @@ class WorkshopDetailScreen extends ConsumerWidget {
         isScrollControlled: true,
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
         builder: (sheetContext) => SafeArea(
             child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -263,10 +323,12 @@ class WorkshopDetailScreen extends ConsumerWidget {
                           style: const TextStyle(
                               fontSize: 11, color: AppColors.muted)),
                       const SizedBox(height: 15),
-                      const Text(
-                          'Pastikan Anda dapat hadir sesuai jadwal kegiatan.',
+                      Text(
+                          w.status == WorkshopStatus.waitlist
+                              ? 'Kuota sudah penuh. Anda akan masuk waiting list dan mendapat kursi sesuai urutan bila ada peserta yang batal.'
+                              : 'Pastikan Anda dapat hadir sesuai jadwal kegiatan.',
                           style:
-                              TextStyle(fontSize: 12, color: AppColors.muted)),
+                              const TextStyle(fontSize: 12, color: AppColors.muted)),
                       const SizedBox(height: 22),
                       Row(children: [
                         Expanded(
@@ -282,7 +344,17 @@ class WorkshopDetailScreen extends ConsumerWidget {
                       ]),
                     ]))));
     if (confirm != true || !context.mounted) return;
-    ref.read(previewProvider.notifier).register(w.id);
+    final Registration? registration;
+    try {
+      registration = await ref
+          .read(participantStoreProvider.notifier)
+          .registerWorkshop(w.id);
+    } catch (e) {
+      if (context.mounted) showMessage(context, errorMessage(e), error: true);
+      return;
+    }
+    if (!context.mounted) return;
+    final waiting = registration?.isWaiting ?? false;
     await showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.white,
@@ -296,11 +368,14 @@ class WorkshopDetailScreen extends ConsumerWidget {
                       child: Icon(Icons.check_rounded,
                           color: AppColors.green, size: 32)),
                   const SizedBox(height: 18),
-                  const Text('Pendaftaran Berhasil',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  Text(waiting ? 'Masuk Waiting List' : 'Pendaftaran Berhasil',
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
-                  Text('Anda berhasil terdaftar pada ${w.title}.',
+                  Text(
+                      waiting
+                          ? 'Kuota ${w.title} sudah penuh. Anda berada di antrean${registration?.queue != null ? ' nomor ${registration!.queue}' : ''} dan otomatis mendapat kursi bila ada pembatalan.'
+                          : 'Anda berhasil terdaftar pada ${w.title}.',
                       textAlign: TextAlign.center),
                   const SizedBox(height: 22),
                   AppButton('Lihat Kegiatan Saya', onPressed: () {
